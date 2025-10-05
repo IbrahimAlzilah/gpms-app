@@ -1,10 +1,11 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useAuth } from '../../context/AuthContext'
-import { 
-  FileText, 
-  Users, 
-  Calendar, 
+import {
+  FileText,
+  Users,
+  Calendar,
   BarChart3,
   CheckCircle,
   Clock,
@@ -17,6 +18,7 @@ import {
 const CommitteeDashboard: React.FC = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Mock data
   const stats = [
@@ -170,35 +172,51 @@ const CommitteeDashboard: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex flex-col items-end space-y-1">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      proposal.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs rounded-full ${proposal.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {proposal.status === 'approved' ? 'مقبول' : 'معلق'}
                     </span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      proposal.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs rounded-full ${proposal.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
                       {proposal.priority === 'high' ? 'عاجل' : 'عادي'}
                     </span>
                   </div>
                 </div>
-                
+
                 {proposal.supervisor && (
                   <div className="text-xs text-gray-600 mb-2">
                     المشرف المعين: {proposal.supervisor}
                   </div>
                 )}
-                
+
                 <div className="flex justify-between items-center">
-                  <button className="text-xs text-gpms-dark hover:text-gpms-light font-medium">
+                  <button
+                    onClick={() => navigate('/committee/proposals')}
+                    className="text-xs text-gpms-dark hover:text-gpms-light font-medium"
+                  >
                     عرض التفاصيل
                   </button>
                   {proposal.status === 'pending' && (
                     <div className="flex space-x-1 rtl:space-x-reverse">
-                      <button className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                      <button
+                        onClick={() => {
+                          console.log('Approving proposal:', proposal.id)
+                          alert('تم قبول المقترح بنجاح!')
+                        }}
+                        className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                      >
                         قبول
                       </button>
-                      <button className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                      <button
+                        onClick={() => {
+                          const reason = prompt('سبب الرفض:')
+                          if (reason) {
+                            console.log('Rejecting proposal:', proposal.id, reason)
+                            alert('تم رفض المقترح بنجاح!')
+                          }
+                        }}
+                        className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                      >
                         رفض
                       </button>
                     </div>
@@ -217,9 +235,8 @@ const CommitteeDashboard: React.FC = () => {
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium text-gray-900">{deadline.title}</h3>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    deadline.status === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${deadline.status === 'urgent' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
                     {deadline.status === 'urgent' ? 'عاجل' : 'عادي'}
                   </span>
                 </div>
@@ -241,32 +258,30 @@ const CommitteeDashboard: React.FC = () => {
             <div key={index} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-gray-900">{supervisor.name}</h3>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  supervisor.availability === 'متاح' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`px-2 py-1 text-xs rounded-full ${supervisor.availability === 'متاح' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {supervisor.availability}
                 </span>
               </div>
-              
+
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>المشاريع الحالية</span>
                   <span>{supervisor.currentProjects}/{supervisor.maxCapacity}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      supervisor.currentProjects / supervisor.maxCapacity > 0.8 
-                        ? 'bg-red-500' 
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${supervisor.currentProjects / supervisor.maxCapacity > 0.8
+                        ? 'bg-red-500'
                         : supervisor.currentProjects / supervisor.maxCapacity > 0.6
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                    }`}
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                      }`}
                     style={{ width: `${(supervisor.currentProjects / supervisor.maxCapacity) * 100}%` }}
                   />
                 </div>
               </div>
-              
+
               <div className="text-xs text-gray-500">
                 السعة المتبقية: {supervisor.maxCapacity - supervisor.currentProjects} مشروع
               </div>
@@ -279,19 +294,31 @@ const CommitteeDashboard: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">الإجراءات السريعة</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/committee/proposals')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <FileText size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">مراجعة المقترحات</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/committee/projects')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <UserCheck size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">تعيين المشرفين</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/committee/schedules')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Calendar size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">إعلان الجداول</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/committee/reports')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <BarChart3 size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">إصدار التقارير</span>
           </button>

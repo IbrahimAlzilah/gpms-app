@@ -1,10 +1,11 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useAuth } from '../../context/AuthContext'
-import { 
-  Users, 
-  Shield, 
-  BarChart3, 
+import {
+  Users,
+  Shield,
+  BarChart3,
   Settings,
   Database,
   Activity,
@@ -18,6 +19,7 @@ import {
 const AdminDashboard: React.FC = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Mock data
   const stats = [
@@ -182,19 +184,18 @@ const AdminDashboard: React.FC = () => {
                   <h3 className="text-sm font-medium text-gray-900">{health.metric}</h3>
                   <div className="flex items-center">
                     <span className="text-lg font-bold text-gray-900 mr-2 rtl:mr-0 rtl:ml-2">{health.value}%</span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      health.status === 'good' ? 'bg-green-100 text-green-800' :
-                      health.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 py-1 text-xs rounded-full ${health.status === 'good' ? 'bg-green-100 text-green-800' :
+                        health.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {health.status === 'good' ? 'جيد' :
-                       health.status === 'warning' ? 'تحذير' : 'حرج'}
+                        health.status === 'warning' ? 'تحذير' : 'حرج'}
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className={`h-2 rounded-full transition-all duration-300 ${health.color}`}
                     style={{ width: `${health.value}%` }}
                   />
@@ -215,7 +216,7 @@ const AdminDashboard: React.FC = () => {
                 warning: 'text-yellow-500',
                 info: 'text-blue-500'
               }
-              
+
               return (
                 <div key={activity.id} className="flex items-start space-x-3 rtl:space-x-reverse">
                   <Icon size={20} className={`mt-1 ${statusColors[activity.status as keyof typeof statusColors]}`} />
@@ -241,20 +242,20 @@ const AdminDashboard: React.FC = () => {
                 <h3 className="text-sm font-medium text-gray-900">{stat.role}</h3>
                 <span className="text-lg font-bold text-gray-900">{stat.count}</span>
               </div>
-              
+
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>نشط</span>
                   <span>{stat.active}/{stat.count}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-gpms-light h-2 rounded-full transition-all duration-300"
                     style={{ width: `${stat.percentage}%` }}
                   />
                 </div>
               </div>
-              
+
               <div className="text-xs text-gray-500">
                 معدل النشاط: {stat.percentage}%
               </div>
@@ -267,19 +268,34 @@ const AdminDashboard: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">الإجراءات السريعة</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/admin/users')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Users size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">إدارة المستخدمين</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/admin/users')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Shield size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">إدارة الصلاحيات</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => {
+              console.log('Starting backup process...')
+              alert('تم بدء عملية النسخ الاحتياطي!')
+            }}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Database size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">النسخ الاحتياطي</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/admin/reports')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <BarChart3 size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">تقارير النظام</span>
           </button>

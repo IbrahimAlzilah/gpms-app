@@ -4,8 +4,8 @@ import { cn } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
-import { 
-  FileText, 
+import {
+  FileText,
   Download,
   BarChart3,
   PieChart,
@@ -93,8 +93,8 @@ const CommitteeReports: React.FC = () => {
   ]
 
   const handleReportSelection = (reportId: string) => {
-    setSelectedReports(prev => 
-      prev.includes(reportId) 
+    setSelectedReports(prev =>
+      prev.includes(reportId)
         ? prev.filter(id => id !== reportId)
         : [...prev, reportId]
     )
@@ -107,19 +107,19 @@ const CommitteeReports: React.FC = () => {
     }
 
     setIsGenerating(true)
-    
+
     try {
       // Simulate report generation
       await new Promise(resolve => setTimeout(resolve, 3000))
-      
+
       // Simulate download
       const selectedReportNames = reportTypes
         .filter(report => selectedReports.includes(report.id))
         .map(report => report.name)
         .join(', ')
-      
+
       alert(`تم إنشاء التقارير التالية بنجاح:\n${selectedReportNames}`)
-      
+
       setSelectedReports([])
     } catch (error) {
       alert('حدث خطأ أثناء إنشاء التقارير')
@@ -132,8 +132,33 @@ const CommitteeReports: React.FC = () => {
     const report = reportTypes.find(r => r.id === reportId)
     if (!report) return
 
-    // Simulate download
-    alert(`جاري تحميل التقرير: ${report.name}`)
+    // Simulate download with better UX
+    const reportData = {
+      name: report.name,
+      category: report.category,
+      description: report.description,
+      generatedAt: new Date().toLocaleString('ar'),
+      dateRange: `${dateRange.startDate} - ${dateRange.endDate}`,
+      filters: {
+        status: statusFilter,
+        priority: priorityFilter,
+        department: departmentFilter
+      }
+    }
+
+    // Create and download file
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${report.name}_${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    // Show success message
+    alert(`تم تحميل التقرير بنجاح: ${report.name}`)
   }
 
   const getCategoryColor = (category: string) => {
@@ -253,10 +278,10 @@ const CommitteeReports: React.FC = () => {
             {reportTypes.map((report) => {
               const IconComponent = report.icon
               const isSelected = selectedReports.includes(report.id)
-              
+
               return (
-                <Card 
-                  key={report.id} 
+                <Card
+                  key={report.id}
                   className={cn(
                     'hover-lift cursor-pointer transition-all duration-200',
                     isSelected ? 'ring-2 ring-gpms-light bg-gpms-light/5' : ''
@@ -275,7 +300,7 @@ const CommitteeReports: React.FC = () => {
                           <p className="text-sm text-gray-600 line-clamp-2">{report.description}</p>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col items-end space-y-1">
                         <span className={cn('px-2 py-1 text-xs rounded-full', getCategoryColor(report.category))}>
                           {getCategoryText(report.category)}
@@ -307,7 +332,7 @@ const CommitteeReports: React.FC = () => {
                         />
                         <span className="text-sm text-gray-600">تضمين في التقرير</span>
                       </div>
-                      
+
                       {report.status === 'available' && (
                         <button
                           onClick={(e) => {

@@ -1,10 +1,11 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useAuth } from '../../context/AuthContext'
-import { 
-  Users, 
-  FileText, 
-  Send, 
+import {
+  Users,
+  FileText,
+  Send,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
 const SupervisorDashboard: React.FC = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Mock data
   const stats = [
@@ -166,20 +168,19 @@ const SupervisorDashboard: React.FC = () => {
                       الطلاب: {project.students.join(', ')}
                     </p>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${project.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
                     {project.status === 'in_progress' ? 'قيد التنفيذ' : 'معلق'}
                   </span>
                 </div>
-                
+
                 <div className="mb-3">
                   <div className="flex justify-between text-xs text-gray-600 mb-1">
                     <span>التقدم</span>
                     <span>{project.progress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-gpms-light h-2 rounded-full transition-all duration-300"
                       style={{ width: `${project.progress}%` }}
                     />
@@ -206,9 +207,8 @@ const SupervisorDashboard: React.FC = () => {
                     <h3 className="text-sm font-medium text-gray-900">{request.student}</h3>
                     <p className="text-xs text-gray-600">{request.project}</p>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    request.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${request.priority === 'high' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {request.priority === 'high' ? 'عاجل' : 'عادي'}
                   </span>
                 </div>
@@ -259,22 +259,22 @@ const SupervisorDashboard: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">الإجراءات السريعة</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button 
-            onClick={() => window.location.href = '/supervisor/notes'}
+          <button
+            onClick={() => navigate('/supervisor/notes')}
             className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
           >
             <MessageSquare size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">إضافة ملاحظات</span>
           </button>
-          <button 
-            onClick={() => window.location.href = '/supervisor/evaluations'}
+          <button
+            onClick={() => navigate('/supervisor/evaluations')}
             className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
           >
             <TrendingUp size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">تقييم المشاريع</span>
           </button>
-          <button 
-            onClick={() => window.location.href = '/supervisor/schedule'}
+          <button
+            onClick={() => navigate('/supervisor/schedule')}
             className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
           >
             <Calendar size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />

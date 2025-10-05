@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -155,13 +155,6 @@ const SupervisorNotes: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'updatedAt') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   const columns = [
     {
@@ -251,20 +244,20 @@ const SupervisorNotes: React.FC = () => {
                     sortOrder={sortOrder}
                     onStatusChange={setPriorityFilter}
                     onPriorityChange={setPriorityFilter}
-                    onTypeChange={() => {}}
+                    onTypeChange={() => { }}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
               >
-                <Button variant="outline" size="sm" className={cn('relative', getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark')}>
+                <Button variant="outline" size="sm" className={cn('relative', getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark')}>
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   {t('common.filter')}
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>

@@ -20,7 +20,7 @@ import SupervisorRequests from '../pages/supervisor/SupervisorRequests'
 import SupervisorProjects from '../pages/supervisor/SupervisorProjects'
 import SupervisorEvaluations from '../pages/supervisor/SupervisorEvaluations'
 import SupervisorNotes from '../pages/supervisor/SupervisorNotes'
-// import SupervisorSchedule from '../pages/supervisor/SupervisorSchedule'
+import SupervisorSchedule from '../pages/supervisor/SupervisorSchedule'
 
 // Committee Routes
 import CommitteeDashboard from '../pages/committee/CommitteeDashboard'
@@ -71,6 +71,9 @@ const AppRoutes: React.FC = () => {
             <Route path="/dashboard" element={<StudentDashboard />} />
             <Route path="/projects" element={<StudentProjects />} />
             <Route path="/proposals" element={<StudentProposals />} />
+            <Route path="/student/proposals/my" element={<StudentProposals />} />
+            <Route path="/student/proposals/group" element={<StudentProposals />} />
+            <Route path="/student/proposals/approved" element={<StudentProposals />} />
             <Route path="/requests" element={<StudentRequests />} />
             <Route path="/documents" element={<StudentDocuments />} />
             <Route path="/group-management" element={<StudentGroupManagement />} />
@@ -90,7 +93,7 @@ const AppRoutes: React.FC = () => {
             <Route path="/supervisor/grades" element={<SupervisorDashboard />} />
             <Route path="/supervisor/evaluations" element={<SupervisorEvaluations />} />
             <Route path="/supervisor/notes" element={<SupervisorNotes />} />
-            {/* <Route path="/supervisor/schedule" element={<SupervisorSchedule />} /> */}
+            <Route path="/supervisor/schedule" element={<SupervisorSchedule />} />
           </>
         )}
 

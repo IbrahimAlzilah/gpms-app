@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
+import DataTable from '../../components/ui/DataTable'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
 import {
   Eye,
@@ -210,19 +211,112 @@ const CommitteeProposals: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'submittedDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
+  const handleViewProposal = (proposal: Proposal) => {
+    // Open proposal details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل المقترح</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">عنوان المقترح:</span>
+              <p class="text-gray-600">${proposal.title}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${proposal.status}</p>
+            </div>
+            <div>
+              <span class="font-medium">الأولوية:</span>
+              <p class="text-gray-600">${proposal.priority}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ التقديم:</span>
+              <p class="text-gray-600">${new Date(proposal.submittedDate).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الطلاب:</span>
+              <p class="text-gray-600">${proposal.students.join(', ')}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشرف المقترح:</span>
+              <p class="text-gray-600">${proposal.supervisor}</p>
+            </div>
+            <div>
+              <span class="font-medium">المدة المتوقعة:</span>
+              <p class="text-gray-600">${proposal.duration} أشهر</p>
+            </div>
+            <div>
+              <span class="font-medium">الميزانية:</span>
+              <p class="text-gray-600">${proposal.budget} ريال</p>
+            </div>
+          </div>
+          <div>
+            <span class="font-medium">الوصف:</span>
+            <p class="text-gray-600 mt-1">${proposal.description}</p>
+          </div>
+          ${proposal.objectives && proposal.objectives.length > 0 ? `
+            <div>
+              <span class="font-medium">الأهداف:</span>
+              <ul class="list-disc list-inside text-gray-600 mt-1 space-y-1">
+                ${proposal.objectives.map(objective => `<li>${objective}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${proposal.technologies && proposal.technologies.length > 0 ? `
+            <div>
+              <span class="font-medium">التقنيات المستخدمة:</span>
+              <div class="flex flex-wrap gap-2 mt-1">
+                ${proposal.technologies.map(tech =>
+      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tech}</span>`
+    ).join('')}
+              </div>
+            </div>
+          ` : ''}
+          ${proposal.notes ? `
+            <div>
+              <span class="font-medium">ملاحظات:</span>
+              <p class="text-gray-600 mt-1">${proposal.notes}</p>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+          ${proposal.status === 'pending' ? `
+            <button onclick="window.approveProposal('${proposal.id}'); this.closest('.fixed').remove()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+              موافقة
+            </button>
+            <button onclick="window.rejectProposal('${proposal.id}'); this.closest('.fixed').remove()" 
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+              رفض
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add action functions to window
+    window.approveProposal = (proposalId: string) => {
+      handleApproveProposal(proposalId)
+    }
+
+    window.rejectProposal = (proposalId: string) => {
+      handleRejectProposal(proposalId)
+    }
   }
 
   const handleApproveProposal = (proposalId: string) => {
     if (window.confirm('هل أنت متأكد من الموافقة على هذا المقترح؟')) {
       // Update proposal status to approved
       console.log('Approving proposal:', proposalId)
+      alert('تم الموافقة على المقترح بنجاح!')
     }
   }
 
@@ -231,6 +325,7 @@ const CommitteeProposals: React.FC = () => {
     if (modificationRequest) {
       // Update proposal status to needs_revision and send notification
       console.log('Requesting modification for proposal:', proposalId, modificationRequest)
+      alert('تم إرسال طلب التعديل بنجاح!')
     }
   }
 
@@ -239,8 +334,82 @@ const CommitteeProposals: React.FC = () => {
     if (rejectionReason) {
       // Update proposal status to rejected
       console.log('Rejecting proposal:', proposalId, rejectionReason)
+      alert('تم رفض المقترح بنجاح!')
     }
   }
+
+  const columns = [
+    {
+      key: 'title',
+      label: 'عنوان المقترح',
+      sortable: true,
+      render: (proposal: Proposal) => (
+        <div>
+          <h3 className="font-medium text-gray-900">{proposal.title}</h3>
+          <p className="text-sm text-gray-600 line-clamp-1">{proposal.description}</p>
+        </div>
+      )
+    },
+    {
+      key: 'student',
+      label: 'الطالب',
+      render: (proposal: Proposal) => (
+        <span className="text-sm text-gray-600">{proposal.student} ({proposal.studentId})</span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'الحالة',
+      render: (proposal: Proposal) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(proposal.status))}>
+          {getStatusText(proposal.status)}
+        </span>
+      )
+    },
+    {
+      key: 'submittedDate',
+      label: 'تاريخ التقديم',
+      sortable: true,
+      render: (proposal: Proposal) => (
+        <span className="text-sm text-gray-600">{new Date(proposal.submittedDate).toLocaleDateString('ar')}</span>
+      )
+    },
+    {
+      key: 'score',
+      label: 'الدرجة',
+      sortable: true,
+      render: (proposal: Proposal) => (
+        <span className="text-sm text-gray-600">{proposal.score ? `${proposal.score}/100` : '-'}</span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'الإجراءات',
+      render: (proposal: Proposal) => (
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <button className="p-2 text-gray-400 hover:text-gray-600" title="عرض">
+            <Eye size={16} />
+          </button>
+          <button className="p-2 text-gray-400 hover:text-gray-600" title="تعديل">
+            <Edit size={16} />
+          </button>
+          {proposal.status === 'submitted' && (
+            <>
+              <button onClick={() => handleApproveProposal(proposal.id)} className="p-2 text-gray-400 hover:text-green-600" title="موافقة">
+                <CheckCircle size={16} />
+              </button>
+              <button onClick={() => handleRequestModification(proposal.id)} className="p-2 text-gray-400 hover:text-yellow-600" title="طلب تعديل">
+                <Edit size={16} />
+              </button>
+              <button onClick={() => handleRejectProposal(proposal.id)} className="p-2 text-gray-400 hover:text-red-600" title="رفض">
+                <XCircle size={16} />
+              </button>
+            </>
+          )}
+        </div>
+      )
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -300,7 +469,7 @@ const CommitteeProposals: React.FC = () => {
                     onPriorityChange={setPriorityFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -310,14 +479,14 @@ const CommitteeProposals: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   {t('common.filter')}
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -341,8 +510,19 @@ const CommitteeProposals: React.FC = () => {
           {/* Proposals Display */}
           {viewMode === 'table' ? (
             <Card className="hover-lift">
-              <CardContent className="text-center py-12">
-                <p className="text-gray-600">عرض الجدول - قيد التطوير</p>
+              <CardContent className="p-0">
+                <DataTable
+                  data={filteredProposals}
+                  columns={columns}
+                  emptyMessage="لا توجد مقترحات"
+                  className="min-h[400px]"
+                  onSort={(key, direction) => {
+                    setSortBy(key)
+                    setSortOrder(direction)
+                  }}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -432,23 +612,23 @@ const CommitteeProposals: React.FC = () => {
                         </button>
                         {proposal.status === 'submitted' && (
                           <>
-                            <button 
+                            <button
                               onClick={() => handleApproveProposal(proposal.id)}
-                              className="p-2 text-gray-400 hover:text-green-600 transition-colors" 
+                              className="p-2 text-gray-400 hover:text-green-600 transition-colors"
                               title="موافقة"
                             >
                               <CheckCircle size={16} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleRequestModification(proposal.id)}
-                              className="p-2 text-gray-400 hover:text-yellow-600 transition-colors" 
+                              className="p-2 text-gray-400 hover:text-yellow-600 transition-colors"
                               title="طلب تعديل"
                             >
                               <Edit size={16} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleRejectProposal(proposal.id)}
-                              className="p-2 text-gray-400 hover:text-red-600 transition-colors" 
+                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                               title="رفض"
                             >
                               <XCircle size={16} />
@@ -456,7 +636,10 @@ const CommitteeProposals: React.FC = () => {
                           </>
                         )}
                       </div>
-                      <button className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors">
+                      <button
+                        onClick={() => handleViewProposal(proposal)}
+                        className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors"
+                      >
                         عرض التفاصيل
                       </button>
                     </div>

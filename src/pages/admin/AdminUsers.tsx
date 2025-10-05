@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
+import DataTable from '../../components/ui/DataTable'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
 import {
   Eye,
@@ -48,6 +49,9 @@ const AdminUsers: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('all')
   const [sortBy, setSortBy] = useState('joinDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
 
   // Mock data - مستخدمي النظام
@@ -233,57 +237,205 @@ const AdminUsers: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (roleFilter !== 'all') count++
-    if (sortBy !== 'joinDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   const handleEditUser = (user: User) => {
     // Open edit user modal
-    // TODO: Implement edit user functionality
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تعديل المستخدم: ${user.name}</h3>
+        <form id="editUserForm" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">الاسم</label>
+              <input type="text" name="name" value="${user.name}" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
+              <input type="email" name="email" value="${user.email}" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف</label>
+              <input type="tel" name="phone" value="${user.phone || ''}" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">الدور</label>
+              <select name="role" required 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="student" ${user.role === 'student' ? 'selected' : ''}>طالب</option>
+                <option value="supervisor" ${user.role === 'supervisor' ? 'selected' : ''}>مشرف</option>
+                <option value="committee" ${user.role === 'committee' ? 'selected' : ''}>لجنة المشاريع</option>
+                <option value="discussion" ${user.role === 'discussion' ? 'selected' : ''}>لجنة المناقشة</option>
+                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>مدير النظام</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">القسم</label>
+              <input type="text" name="department" value="${user.department || ''}" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">رقم الطالب</label>
+              <input type="text" name="studentId" value="${user.studentId || ''}" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
+            <select name="status" required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="active" ${user.status === 'active' ? 'selected' : ''}>نشط</option>
+              <option value="inactive" ${user.status === 'inactive' ? 'selected' : ''}>غير نشط</option>
+              <option value="pending" ${user.status === 'pending' ? 'selected' : ''}>في الانتظار</option>
+              <option value="suspended" ${user.status === 'suspended' ? 'selected' : ''}>معلق</option>
+            </select>
+          </div>
+        </form>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitUserEdit('${user.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            حفظ التعديلات
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitUserEdit = (userId: string) => {
+      const form = document.getElementById('editUserForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const userData = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        role: formData.get('role'),
+        department: formData.get('department'),
+        studentId: formData.get('studentId'),
+        status: formData.get('status')
+      }
+
+      console.log('Updating user:', userId, userData)
+      alert('تم تحديث المستخدم بنجاح!')
+    }
   }
 
   const handleManagePermissions = (user: User) => {
     // Open permissions management modal
-    // TODO: Implement permissions management functionality
     const permissions = [
-      'view_projects',
-      'submit_proposals',
-      'supervise_projects',
-      'evaluate_proposals',
-      'manage_students',
-      'review_projects',
-      'approve_proposals',
-      'manage_schedules',
-      'evaluate_final_projects',
-      'conduct_defense',
-      'full_access',
-      'manage_users',
-      'system_settings'
+      { key: 'view_projects', label: 'عرض المشاريع' },
+      { key: 'submit_proposals', label: 'تقديم المقترحات' },
+      { key: 'supervise_projects', label: 'الإشراف على المشاريع' },
+      { key: 'evaluate_proposals', label: 'تقييم المقترحات' },
+      { key: 'manage_students', label: 'إدارة الطلاب' },
+      { key: 'review_projects', label: 'مراجعة المشاريع' },
+      { key: 'approve_proposals', label: 'الموافقة على المقترحات' },
+      { key: 'manage_schedules', label: 'إدارة الجداول' },
+      { key: 'evaluate_final_projects', label: 'تقييم المشاريع النهائية' },
+      { key: 'conduct_defense', label: 'إجراء المناقشات' },
+      { key: 'full_access', label: 'وصول كامل' },
+      { key: 'manage_users', label: 'إدارة المستخدمين' },
+      { key: 'system_settings', label: 'إعدادات النظام' }
     ]
-    
-    const currentPermissions = user.permissions
-    const availablePermissions = permissions.filter(p => !currentPermissions.includes(p))
-    
-    const message = `
-إدارة الصلاحيات للمستخدم: ${user.name}
-الدور: ${getRoleText(user.role)}
 
-الصلاحيات الحالية:
-${currentPermissions.map(p => `- ${p}`).join('\n')}
+    const currentPermissions = user.permissions || []
 
-الصلاحيات المتاحة:
-${availablePermissions.map(p => `- ${p}`).join('\n')}
-
-يمكنك إضافة أو إزالة الصلاحيات حسب الحاجة.
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">إدارة صلاحيات المستخدم: ${user.name}</h3>
+        <div class="space-y-4">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="font-medium text-blue-900 mb-2">الدور الحالي: ${getRoleText(user.role)}</h4>
+            <p class="text-sm text-blue-800">يمكنك تعديل الصلاحيات أدناه</p>
+          </div>
+          
+          <div class="grid grid-cols-1 gap-3">
+            ${permissions.map(permission => `
+              <label class="flex items-center space-x-3 rtl:space-x-reverse">
+                <input type="checkbox" name="permissions" value="${permission.key}" 
+                       ${currentPermissions.includes(permission.key) ? 'checked' : ''}
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="text-sm text-gray-700">${permission.label}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitPermissions('${user.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            حفظ الصلاحيات
+          </button>
+        </div>
+      </div>
     `
-    
-    alert(message)
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitPermissions = (userId: string) => {
+      const checkboxes = document.querySelectorAll('input[name="permissions"]:checked')
+      const selectedPermissions = Array.from(checkboxes).map(cb => (cb as HTMLInputElement).value)
+
+      console.log('Updating permissions for user:', userId, selectedPermissions)
+      alert('تم تحديث الصلاحيات بنجاح!')
+    }
   }
+
+  const columns = [
+    { key: 'name', label: 'الاسم', sortable: true },
+    { key: 'email', label: 'البريد الإلكتروني', sortable: true },
+    {
+      key: 'role',
+      label: 'الدور',
+      render: (user: User) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getRoleColor(user.role))}>{getRoleText(user.role)}</span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'الحالة',
+      render: (user: User) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(user.status))}>{getStatusText(user.status)}</span>
+      )
+    },
+    {
+      key: 'joinDate',
+      label: 'تاريخ الانضمام',
+      sortable: true,
+      render: (user: User) => (
+        <span className="text-sm text-gray-600">{new Date(user.joinDate).toLocaleDateString('ar')}</span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'الإجراءات',
+      render: (user: User) => (
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <button className="p-2 text-gray-400 hover:text-gray-600" title="عرض"><Eye size={16} /></button>
+          <button onClick={() => handleEditUser(user)} className="p-2 text-gray-400 hover:text-gray-600" title="تعديل"><Edit size={16} /></button>
+          <button onClick={() => handleManagePermissions(user)} className="p-2 text-gray-400 hover:text-blue-600" title="إدارة الصلاحيات"><Shield size={16} /></button>
+          <button className="p-2 text-gray-400 hover:text-red-600" title="حذف"><Trash2 size={16} /></button>
+        </div>
+      )
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -346,7 +498,7 @@ ${availablePermissions.map(p => `- ${p}`).join('\n')}
                     onTypeChange={setRoleFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -356,14 +508,14 @@ ${availablePermissions.map(p => `- ${p}`).join('\n')}
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, roleFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="ml-1 rtl:ml-0 rtl:mr-1" />
                   تصفية المستخدمين
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, roleFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, roleFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -393,8 +545,19 @@ ${availablePermissions.map(p => `- ${p}`).join('\n')}
       {/* Users Display */}
       {viewMode === 'table' ? (
         <Card className="hover-lift">
-          <CardContent className="text-center py-12">
-            <p className="text-gray-600">عرض الجدول - قيد التطوير</p>
+          <CardContent className="p-0">
+            <DataTable
+              data={filteredUsers}
+              columns={columns}
+              emptyMessage="لا توجد مستخدمين"
+              className="min-h-[400px]"
+              onSort={(key, direction) => {
+                setSortBy(key)
+                setSortOrder(direction)
+              }}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -495,16 +658,16 @@ ${availablePermissions.map(p => `- ${p}`).join('\n')}
                     <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="عرض">
                       <Eye size={16} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleEditUser(user)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors" 
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                       title="تعديل"
                     >
                       <Edit size={16} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleManagePermissions(user)}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors" 
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
                       title="إدارة الصلاحيات"
                     >
                       <Shield size={16} />

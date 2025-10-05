@@ -63,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, sidebarWidth = 0 }) => {
             <input
               type="text"
               placeholder={t('common.search')}
-              className="input-field w-64 pl-10 pr-4 py-2"
+              className="input-field text-sm w-64 pl-10 pr-4 py-2"
             />
           </div>
         </div>

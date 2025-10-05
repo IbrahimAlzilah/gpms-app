@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -8,9 +8,9 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
-import { 
-  Eye, 
-  Edit, 
+import {
+  Eye,
+  Edit,
   Award,
   TrendingUp,
   FileText,
@@ -285,18 +285,202 @@ const SupervisorEvaluations: React.FC = () => {
   })
 
   const handleViewEvaluation = (evaluation: Evaluation) => {
-    console.log('View evaluation:', evaluation)
-    // Implement view functionality
+    // Open evaluation details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل التقييم</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">نوع التقييم:</span>
+              <p class="text-gray-600">${evaluation.type}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${evaluation.status}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشروع:</span>
+              <p class="text-gray-600">${evaluation.projectTitle}</p>
+            </div>
+            <div>
+              <span class="font-medium">الطلاب:</span>
+              <p class="text-gray-600">${evaluation.students.join(', ')}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ التقييم:</span>
+              <p class="text-gray-600">${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الدرجة:</span>
+              <p class="text-gray-600">${evaluation.score || 'لم يتم التقييم بعد'}</p>
+            </div>
+          </div>
+          <div>
+            <span class="font-medium">الوصف:</span>
+            <p class="text-gray-600 mt-1">${evaluation.description}</p>
+          </div>
+          ${evaluation.criteria && evaluation.criteria.length > 0 ? `
+            <div>
+              <span class="font-medium">معايير التقييم:</span>
+              <ul class="list-disc list-inside text-gray-600 mt-1 space-y-1">
+                ${evaluation.criteria.map(criterion => `<li>${criterion}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${evaluation.notes ? `
+            <div>
+              <span class="font-medium">ملاحظات:</span>
+              <p class="text-gray-600 mt-1">${evaluation.notes}</p>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
   }
 
   const handleEditEvaluation = (evaluation: Evaluation) => {
-    console.log('Edit evaluation:', evaluation)
-    // Implement edit functionality
+    // Open edit evaluation modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تعديل التقييم</h3>
+        <form id="editEvaluationForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">نوع التقييم</label>
+            <select name="type" required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="midterm" ${evaluation.type === 'midterm' ? 'selected' : ''}>تقييم مرحلي</option>
+              <option value="final" ${evaluation.type === 'final' ? 'selected' : ''}>تقييم نهائي</option>
+              <option value="presentation" ${evaluation.type === 'presentation' ? 'selected' : ''}>عرض تقديمي</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+            <textarea name="description" rows="3" required 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${evaluation.description}</textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ التقييم</label>
+              <input type="date" name="evaluationDate" value="${evaluation.evaluationDate}" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">الدرجة</label>
+              <input type="number" name="score" value="${evaluation.score || ''}" min="0" max="100" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+            <textarea name="notes" rows="2" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${evaluation.notes || ''}</textarea>
+          </div>
+        </form>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitEvaluationEdit('${evaluation.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            حفظ التعديلات
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitEvaluationEdit = (evaluationId: string) => {
+      const form = document.getElementById('editEvaluationForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const evaluationData = {
+        type: formData.get('type'),
+        description: formData.get('description'),
+        evaluationDate: formData.get('evaluationDate'),
+        score: formData.get('score'),
+        notes: formData.get('notes')
+      }
+
+      console.log('Updating evaluation:', evaluationId, evaluationData)
+      alert('تم تحديث التقييم بنجاح!')
+    }
   }
 
   const handleStartEvaluation = (evaluation: Evaluation) => {
-    console.log('Start evaluation:', evaluation)
-    // Implement start evaluation functionality
+    // Open start evaluation modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">بدء التقييم: ${evaluation.projectTitle}</h3>
+        <div class="space-y-4">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="font-medium text-blue-900 mb-2">معلومات التقييم</h4>
+            <div class="text-sm text-blue-800 space-y-1">
+              <p><strong>النوع:</strong> ${evaluation.type}</p>
+              <p><strong>الطلاب:</strong> ${evaluation.students.join(', ')}</p>
+              <p><strong>التاريخ:</strong> ${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
+            </div>
+          </div>
+          
+          <form id="startEvaluationForm" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">الدرجة (0-100)</label>
+              <input type="number" name="score" required min="0" max="100" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التعليقات</label>
+              <textarea name="comments" rows="4" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
+              <textarea name="recommendations" rows="3" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitEvaluation('${evaluation.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            إرسال التقييم
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitEvaluation = (evaluationId: string) => {
+      const form = document.getElementById('startEvaluationForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const evaluationData = {
+        score: formData.get('score'),
+        comments: formData.get('comments'),
+        recommendations: formData.get('recommendations')
+      }
+
+      console.log('Submitting evaluation:', evaluationId, evaluationData)
+      alert('تم إرسال التقييم بنجاح!')
+    }
   }
 
   const handleFilterClear = () => {
@@ -307,15 +491,6 @@ const SupervisorEvaluations: React.FC = () => {
     setSortOrder('asc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (typeFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'dueDate') count++
-    if (sortOrder !== 'asc') count++
-    return count
-  }
 
   // Calculate statistics
   const totalEvaluations = evaluations.length
@@ -324,7 +499,7 @@ const SupervisorEvaluations: React.FC = () => {
   const overdueEvaluations = evaluations.filter(e => e.status === 'overdue').length
   const averageScore = evaluations
     .filter(e => e.score && e.score > 0)
-    .reduce((sum, e) => sum + (e.score || 0), 0) / 
+    .reduce((sum, e) => sum + (e.score || 0), 0) /
     evaluations.filter(e => e.score && e.score > 0).length || 0
 
   const columns = [
@@ -400,8 +575,8 @@ const SupervisorEvaluations: React.FC = () => {
       label: 'الأولوية',
       render: (evaluation: Evaluation) => (
         <span className={cn('px-2 py-1 text-xs rounded-full', getPriorityColor(evaluation.priority))}>
-          {evaluation.priority === 'high' ? 'عالي' : 
-           evaluation.priority === 'medium' ? 'متوسط' : 'منخفض'}
+          {evaluation.priority === 'high' ? 'عالي' :
+            evaluation.priority === 'medium' ? 'متوسط' : 'منخفض'}
         </span>
       )
     },
@@ -500,7 +675,7 @@ const SupervisorEvaluations: React.FC = () => {
                     onTypeChange={setTypeFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -510,14 +685,14 @@ const SupervisorEvaluations: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
-                  {t('common.filter')} 
-                  {getActiveFiltersCount() > 0 && (
+                  {t('common.filter')}
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -631,8 +806,8 @@ const SupervisorEvaluations: React.FC = () => {
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>الأولوية:</span>
                         <span className={cn('px-2 py-1 text-xs rounded-full', getPriorityColor(evaluation.priority))}>
-                          {evaluation.priority === 'high' ? 'عالي' : 
-                           evaluation.priority === 'medium' ? 'متوسط' : 'منخفض'}
+                          {evaluation.priority === 'high' ? 'عالي' :
+                            evaluation.priority === 'medium' ? 'متوسط' : 'منخفض'}
                         </span>
                       </div>
                     </div>

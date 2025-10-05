@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -10,6 +10,8 @@ import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
 import ProposalFormModal from '../../components/forms/ProposalFormModal'
 import GroupManagementModal from '../../components/forms/GroupManagementModal'
+import Modal from '../../components/ui/Modal'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Eye,
@@ -52,6 +54,7 @@ interface Project {
 
 const StudentProjects: React.FC = () => {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
@@ -61,6 +64,7 @@ const StudentProjects: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   // Mock data
   const [projects, setProjects] = useState<Project[]>([
@@ -283,15 +287,20 @@ const StudentProjects: React.FC = () => {
   }
 
   const handleDeleteProject = (projectId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المشروع؟')) {
-      setProjects(prev => prev.filter(p => p.id !== projectId))
+    setConfirmDeleteId(projectId)
+  }
+
+  const confirmDelete = () => {
+    if (confirmDeleteId) {
+      setProjects(prev => prev.filter(p => p.id !== confirmDeleteId))
+      setConfirmDeleteId(null)
     }
   }
 
-  const handleViewProject = (project: Project) => {
-    // Implement view functionality
-    // TODO: Implement project view functionality
-  }
+  const cancelDelete = () => setConfirmDeleteId(null)
+
+  const [viewProject, setViewProject] = useState<Project | null>(null)
+  const handleViewProject = (project: Project) => setViewProject(project)
 
   const handleModalSubmit = (data: any) => {
     if (editingProject) {
@@ -323,14 +332,6 @@ const StudentProjects: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'updatedAt') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   // Debug logging
   // Filter and sort projects based on current filters
@@ -440,6 +441,12 @@ const StudentProjects: React.FC = () => {
     }
   ]
 
+  // Determine student's current enrolled project
+  const currentProject = useMemo(() => {
+    // Business rule placeholder: pick the first project with status in progress or pending/approved
+    return projects.find(p => ['in_progress', 'pending', 'approved'].includes(p.status)) || null
+  }, [projects])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -508,14 +515,14 @@ const StudentProjects: React.FC = () => {
                   size="md"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   <span className="hidden md:block">{t('common.filter')} </span>
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -535,6 +542,42 @@ const StudentProjects: React.FC = () => {
         <Divider />
 
         <CardContent>
+          {/* If student has a current project, show My Project summary instead of registration options */}
+          {currentProject && (
+            <div className="mb-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">متابعة مشروعي</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">اسم المشروع:</span>
+                  <p className="text-gray-900 font-medium">{currentProject.title}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">الحالة:</span>
+                  <p className="text-gray-900 font-medium">{getStatusText(currentProject.status)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">المشرف:</span>
+                  <p className="text-gray-900 font-medium">{currentProject.supervisor}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">أعضاء المجموعة:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {currentProject.teamMembers.map((m, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-white border border-gray-200 rounded-full text-xs">{m}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 mt-4">
+                <Button onClick={() => setIsGroupModalOpen(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+                  إدارة المجموعة
+                </Button>
+                <Button onClick={() => navigate('/documents')} variant="outline">
+                  تسليم/رفع المستندات
+                </Button>
+              </div>
+            </div>
+          )}
           {/* Search Bar */}
           {/* <div className="mb-4">
             <SearchBar
@@ -731,8 +774,8 @@ const StudentProjects: React.FC = () => {
             </div>
           )}
 
-          {/* Empty State */}
-          {filteredProjects.length === 0 && (
+          {/* Empty State (only when no projects at all and no current project) */}
+          {filteredProjects.length === 0 && !currentProject && (
             <Card className="hover-lift">
               <CardContent className="text-center py-12">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -740,12 +783,7 @@ const StudentProjects: React.FC = () => {
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مشاريع</h3>
                 <p className="text-gray-600 mb-4">لم يتم العثور على مشاريع تطابق معايير البحث</p>
-                <Button
-                  onClick={handleAddProject}
-                  className="bg-gpms-dark text-white hover:bg-gpms-light"
-                >
-                  إضافة مشروع جديد
-                </Button>
+                {/* الطالب لا يمكنه إضافة مشروع جديد إذا لم يكن لديه مشروع، التسجيل يتم من صفحة المقترحات */}
               </CardContent>
             </Card>
           )}
@@ -773,6 +811,75 @@ const StudentProjects: React.FC = () => {
           members: ['أحمد علي', 'فاطمة حسن', 'محمد خالد']
         }}
       />
+
+      {/* Confirm Delete Modal */}
+      <Modal
+        isOpen={!!confirmDeleteId}
+        onClose={cancelDelete}
+        title={'تأكيد الحذف'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700 text-sm">هل أنت متأكد من حذف هذا المشروع؟ لا يمكن التراجع عن هذا الإجراء.</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={cancelDelete}>إلغاء</Button>
+            <Button onClick={confirmDelete} className="bg-red-600 text-white hover:bg-red-700">حذف</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* View Project Modal */}
+      <Modal
+        isOpen={!!viewProject}
+        onClose={() => setViewProject(null)}
+        title={'تفاصيل المشروع'}
+        size="lg"
+      >
+        {viewProject && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium">اسم المشروع:</span>
+                <p className="text-gray-700 mt-1">{viewProject.title}</p>
+              </div>
+              <div>
+                <span className="font-medium">الحالة:</span>
+                <p className="text-gray-700 mt-1">{getStatusText(viewProject.status)}</p>
+              </div>
+              <div>
+                <span className="font-medium">الأولوية:</span>
+                <p className="text-gray-700 mt-1">{getPriorityText(viewProject.priority)}</p>
+              </div>
+              <div>
+                <span className="font-medium">تاريخ الإنشاء:</span>
+                <p className="text-gray-700 mt-1">{new Date(viewProject.createdAt).toLocaleDateString('ar')}</p>
+              </div>
+              <div>
+                <span className="font-medium">تاريخ التحديث:</span>
+                <p className="text-gray-700 mt-1">{new Date(viewProject.updatedAt).toLocaleDateString('ar')}</p>
+              </div>
+              <div>
+                <span className="font-medium">المشرف:</span>
+                <p className="text-gray-700 mt-1">{viewProject.supervisor}</p>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="text-gray-700 mt-1">{viewProject.description}</p>
+            </div>
+            {viewProject.tags?.length > 0 && (
+              <div>
+                <span className="font-medium">العلامات:</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {viewProject.tags.map((tag, i) => (
+                    <span key={i} className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

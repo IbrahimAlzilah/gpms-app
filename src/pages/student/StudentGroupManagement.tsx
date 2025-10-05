@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
 import GroupManagementModal from '../../components/forms/GroupManagementModal'
-import { 
+import {
   Users,
   UserPlus,
   LogOut,
@@ -77,8 +77,6 @@ const StudentGroupManagement: React.FC = () => {
   }
 
   const handleGroupAction = (data: any) => {
-    console.log('Group action data:', data)
-    
     switch (modalType) {
       case 'create':
         // Handle group creation
@@ -99,27 +97,28 @@ const StudentGroupManagement: React.FC = () => {
         break
       case 'join':
         // Handle joining a group
-        alert('تم الانضمام للمجموعة بنجاح')
+        // Simulate joining a group
+        console.log('تم الانضمام للمجموعة بنجاح', data)
         break
       case 'invite':
         // Handle inviting members
-        alert(`تم إرسال دعوة لـ ${data.inviteEmail}`)
+        console.log(`تم إرسال دعوة لـ ${data.inviteEmail}`)
         break
       case 'leave':
         // Handle leaving group - UC-06: Check A2 condition
         if (currentGroup && currentGroup.members.length > 1) {
           // A2: At least one member must remain
           setCurrentGroup(null)
-          alert('تم مغادرة المجموعة بنجاح')
+          console.log('تم مغادرة المجموعة بنجاح')
         } else if (currentGroup && currentGroup.members.length === 1) {
           // A2: Cannot leave if only one member remains
-          alert('لا يمكن مغادرة المجموعة - يجب أن يبقى عضو واحد على الأقل في المجموعة')
+          console.warn('لا يمكن مغادرة المجموعة - يجب أن يبقى عضو واحد على الأقل في المجموعة')
         } else {
-          alert('لا توجد مجموعة للمغادرة منها')
+          console.warn('لا توجد مجموعة للمغادرة منها')
         }
         break
     }
-    
+
     setIsModalOpen(false)
   }
 
@@ -128,8 +127,8 @@ const StudentGroupManagement: React.FC = () => {
   }
 
   const getRoleColor = (role: string) => {
-    return role === 'leader' 
-      ? 'bg-blue-100 text-blue-800' 
+    return role === 'leader'
+      ? 'bg-blue-100 text-blue-800'
       : 'bg-gray-100 text-gray-800'
   }
 
@@ -157,8 +156,8 @@ const StudentGroupManagement: React.FC = () => {
                 <div className="flex items-center mt-2">
                   <span className={cn(
                     'px-2 py-1 rounded-full text-xs font-medium',
-                    currentGroup.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
+                    currentGroup.status === 'active'
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-yellow-100 text-yellow-800'
                   )}>
                     {currentGroup.status === 'active' ? 'نشطة' : 'معلقة'}

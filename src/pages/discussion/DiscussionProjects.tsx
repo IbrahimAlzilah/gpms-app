@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
+import DataTable from '../../components/ui/DataTable'
 import Button from '../../components/ui/Button'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
@@ -230,14 +231,218 @@ const DiscussionProjects: React.FC = () => {
     setSortOrder('asc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'defenseDate') count++
-    if (sortOrder !== 'asc') count++
-    return count
+  const handleViewProject = (project: Project) => {
+    // Open project details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل المشروع</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">اسم المشروع:</span>
+              <p class="text-gray-600">${project.title}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${getStatusText(project.status)}</p>
+            </div>
+            <div>
+              <span class="font-medium">الأولوية:</span>
+              <p class="text-gray-600">${getPriorityText(project.priority)}</p>
+            </div>
+            <div>
+              <span class="font-medium">التقدم:</span>
+              <p class="text-gray-600">${project.progress}%</p>
+            </div>
+            <div>
+              <span class="font-medium">المشرف:</span>
+              <p class="text-gray-600">${project.supervisor}</p>
+            </div>
+            <div>
+              <span class="font-medium">الطلاب:</span>
+              <p class="text-gray-600">${project.students.join(', ')}</p>
+            </div>
+            <div>
+              <span class="font-medium">القسم:</span>
+              <p class="text-gray-600">${project.department}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ التسليم:</span>
+              <p class="text-gray-600">${new Date(project.submissionDate).toLocaleDateString('ar')}</p>
+            </div>
+          </div>
+          <div>
+            <span class="font-medium">الوصف:</span>
+            <p class="text-gray-600 mt-1">${project.description}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <span class="font-medium">درجة التقرير:</span>
+              <p class="text-gray-600">${project.reportGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+            <div>
+              <span class="font-medium">درجة العرض:</span>
+              <p class="text-gray-600">${project.presentationGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+            <div>
+              <span class="font-medium">الدرجة النهائية:</span>
+              <p class="text-gray-600 font-bold">${project.finalGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+          </div>
+          ${project.tags && project.tags.length > 0 ? `
+            <div>
+              <span class="font-medium">العلامات:</span>
+              <div class="flex flex-wrap gap-2 mt-1">
+                ${project.tags.map(tag =>
+      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag}</span>`
+    ).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
   }
+
+  const handleEvaluateProject = (project: Project) => {
+    // Open evaluation modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تقييم المشروع: ${project.title}</h3>
+        <div class="space-y-4">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="font-medium text-blue-900 mb-2">معلومات المشروع</h4>
+            <div class="text-sm text-blue-800 space-y-1">
+              <p><strong>الطلاب:</strong> ${project.students.join(', ')}</p>
+              <p><strong>المشرف:</strong> ${project.supervisor}</p>
+              <p><strong>القسم:</strong> ${project.department}</p>
+            </div>
+          </div>
+          
+          <form id="evaluateProjectForm" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">درجة التقرير (0-50)</label>
+                <input type="number" name="reportGrade" min="0" max="50" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">درجة العرض (0-50)</label>
+                <input type="number" name="presentationGrade" min="0" max="50" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التعليقات</label>
+              <textarea name="comments" rows="4" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
+              <textarea name="recommendations" rows="3" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitProjectEvaluation('${project.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            إرسال التقييم
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitProjectEvaluation = (projectId: string) => {
+      const form = document.getElementById('evaluateProjectForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const evaluationData = {
+        reportGrade: formData.get('reportGrade'),
+        presentationGrade: formData.get('presentationGrade'),
+        comments: formData.get('comments'),
+        recommendations: formData.get('recommendations')
+      }
+
+      console.log('Submitting project evaluation:', projectId, evaluationData)
+      alert('تم إرسال التقييم بنجاح!')
+    }
+  }
+
+  const columns = [
+    {
+      key: 'title',
+      label: 'اسم المشروع',
+      sortable: true,
+      render: (project: Project) => (
+        <div>
+          <h3 className="font-medium text-gray-900">{project.title}</h3>
+          <p className="text-sm text-gray-600 line-clamp-1">{project.description}</p>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      label: 'الحالة',
+      render: (project: Project) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(project.status))}>{getStatusText(project.status)}</span>
+      )
+    },
+    {
+      key: 'supervisor',
+      label: 'المشرف',
+      render: (project: Project) => <span className="text-sm text-gray-600">{project.supervisor}</span>
+    },
+    {
+      key: 'defenseDate',
+      label: 'موعد المناقشة',
+      sortable: true,
+      render: (project: Project) => (
+        <span className="text-sm text-gray-600">
+          {project.defenseDate ? new Date(project.defenseDate).toLocaleDateString('ar') : '-'}{project.defenseTime ? ` - ${project.defenseTime}` : ''}
+        </span>
+      )
+    },
+    {
+      key: 'department',
+      label: 'القسم',
+      render: (project: Project) => <span className="text-sm text-gray-600">{project.department}</span>
+    },
+    {
+      key: 'finalGrade',
+      label: 'النهائية',
+      sortable: true,
+      render: (project: Project) => <span className="text-sm text-gray-600">{project.finalGrade ? `${project.finalGrade}/100` : '-'}</span>
+    },
+    {
+      key: 'actions',
+      label: 'الإجراءات',
+      render: (project: Project) => (
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <button onClick={() => handleViewProject(project)} className="p-2 text-gray-400 hover:text-gray-600" title="عرض"><Eye size={16} /></button>
+          {(project.status === 'defended' || project.status === 'ready_for_defense') && (
+            <button onClick={() => handleEvaluateProject(project)} className="p-2 text-gray-400 hover:text-yellow-600" title="تقييم"><Star size={16} /></button>
+          )}
+        </div>
+      )
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -297,7 +502,7 @@ const DiscussionProjects: React.FC = () => {
                     onPriorityChange={setPriorityFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -307,14 +512,14 @@ const DiscussionProjects: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   تصفية المشاريع
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -339,8 +544,19 @@ const DiscussionProjects: React.FC = () => {
       {/* Projects Display */}
       {viewMode === 'table' ? (
         <Card className="hover-lift">
-          <CardContent className="text-center py-12">
-            <p className="text-gray-600">عرض الجدول - قيد التطوير</p>
+          <CardContent className="p-0">
+            <DataTable
+              data={filteredProjects}
+              columns={columns}
+              emptyMessage="لا توجد مشاريع"
+              className="min-h-[400px]"
+              onSort={(key, direction) => {
+                setSortBy(key)
+                setSortOrder(direction)
+              }}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -377,7 +593,7 @@ const DiscussionProjects: React.FC = () => {
                     <User size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
                     <span>{project.supervisor}</span>
                   </div>
-                  
+
                   {project.defenseDate && (
                     <div className="flex items-center text-sm text-gray-600">
                       <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
@@ -471,15 +687,27 @@ const DiscussionProjects: React.FC = () => {
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div className="flex space-x-2 rtl:space-x-reverse">
-                    <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="عرض">
+                    <button
+                      onClick={() => handleViewProject(project)}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="عرض"
+                    >
                       <Eye size={16} />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="تقرير">
+                    <button
+                      onClick={() => handleViewProject(project)}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="تقرير"
+                    >
                       <FileText size={16} />
                     </button>
                     {(project.status === 'defended' || project.status === 'ready_for_defense') && (
                       <>
-                        <button className="p-2 text-gray-400 hover:text-yellow-600 transition-colors" title="تقييم">
+                        <button
+                          onClick={() => handleEvaluateProject(project)}
+                          className="p-2 text-gray-400 hover:text-yellow-600 transition-colors"
+                          title="تقييم"
+                        >
                           <Star size={16} />
                         </button>
                         <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="تعليق">
@@ -488,7 +716,10 @@ const DiscussionProjects: React.FC = () => {
                       </>
                     )}
                   </div>
-                  <button className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => handleViewProject(project)}
+                    className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors"
+                  >
                     عرض التفاصيل
                   </button>
                 </div>

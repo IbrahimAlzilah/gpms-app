@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -246,7 +246,93 @@ const SupervisorRequests: React.FC = () => {
   }
 
   const handleViewRequest = (request: Request) => {
-    console.log('View request:', request)
+    // Open request details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل الطلب</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">نوع الطلب:</span>
+              <p class="text-gray-600">${request.type}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${request.status}</p>
+            </div>
+            <div>
+              <span class="font-medium">الأولوية:</span>
+              <p class="text-gray-600">${request.priority}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ الإرسال:</span>
+              <p class="text-gray-600">${new Date(request.submittedDate).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الطالب:</span>
+              <p class="text-gray-600">${request.studentName}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشروع:</span>
+              <p class="text-gray-600">${request.projectTitle}</p>
+            </div>
+          </div>
+          <div>
+            <span class="font-medium">الوصف:</span>
+            <p class="text-gray-600 mt-1">${request.description}</p>
+          </div>
+          ${request.reason ? `
+            <div>
+              <span class="font-medium">السبب:</span>
+              <p class="text-gray-600 mt-1">${request.reason}</p>
+            </div>
+          ` : ''}
+          ${request.response ? `
+            <div>
+              <span class="font-medium">الرد:</span>
+              <p class="text-gray-600 mt-1">${request.response}</p>
+            </div>
+          ` : ''}
+          ${request.notes ? `
+            <div>
+              <span class="font-medium">ملاحظات:</span>
+              <p class="text-gray-600 mt-1">${request.notes}</p>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+          ${request.status === 'pending' ? `
+            <button onclick="window.approveRequest('${request.id}'); this.closest('.fixed').remove()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+              قبول
+            </button>
+            <button onclick="window.rejectRequest('${request.id}'); this.closest('.fixed').remove()" 
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+              رفض
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add action functions to window
+    window.approveRequest = (requestId: string) => {
+      handleApproveRequest(requestId)
+    }
+
+    window.rejectRequest = (requestId: string) => {
+      const reason = prompt('سبب الرفض:')
+      if (reason) {
+        handleRejectRequest(requestId, reason)
+      }
+    }
   }
 
   const handleFilterClear = () => {
@@ -257,15 +343,6 @@ const SupervisorRequests: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (typeFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'submittedDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   const columns = [
     {
@@ -433,14 +510,14 @@ const SupervisorRequests: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   {t('common.filter')}
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>

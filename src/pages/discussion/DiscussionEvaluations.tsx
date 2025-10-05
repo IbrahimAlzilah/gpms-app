@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
+import DataTable from '../../components/ui/DataTable'
 import Button from '../../components/ui/Button'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
@@ -226,14 +227,231 @@ const DiscussionEvaluations: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'defenseDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
+  const handleViewEvaluation = (evaluation: Evaluation) => {
+    // Open evaluation details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل التقييم النهائي</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">المشروع:</span>
+              <p class="text-gray-600">${evaluation.projectTitle}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${getStatusText(evaluation.status)}</p>
+            </div>
+            <div>
+              <span class="font-medium">الطلاب:</span>
+              <p class="text-gray-600">${evaluation.students.join(', ')}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشرف:</span>
+              <p class="text-gray-600">${evaluation.supervisor}</p>
+            </div>
+            <div>
+              <span class="font-medium">المقيم:</span>
+              <p class="text-gray-600">${evaluation.evaluator}</p>
+            </div>
+            <div>
+              <span class="font-medium">القسم:</span>
+              <p class="text-gray-600">${evaluation.department}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ التقييم:</span>
+              <p class="text-gray-600">${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الأولوية:</span>
+              <p class="text-gray-600">${getPriorityText(evaluation.priority)}</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <span class="font-medium">درجة التقرير:</span>
+              <p class="text-gray-600">${evaluation.reportGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+            <div>
+              <span class="font-medium">درجة العرض:</span>
+              <p class="text-gray-600">${evaluation.presentationGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+            <div>
+              <span class="font-medium">الدرجة النهائية:</span>
+              <p class="text-gray-600 font-bold">${evaluation.finalGrade || 'لم يتم التقييم بعد'}</p>
+            </div>
+          </div>
+          ${evaluation.comments ? `
+            <div>
+              <span class="font-medium">التعليقات:</span>
+              <p class="text-gray-600 mt-1">${evaluation.comments}</p>
+            </div>
+          ` : ''}
+          ${evaluation.recommendations && evaluation.recommendations.length > 0 ? `
+            <div>
+              <span class="font-medium">التوصيات:</span>
+              <ul class="list-disc list-inside text-gray-600 mt-1 space-y-1">
+                ${evaluation.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          ${evaluation.tags && evaluation.tags.length > 0 ? `
+            <div>
+              <span class="font-medium">العلامات:</span>
+              <div class="flex flex-wrap gap-2 mt-1">
+                ${evaluation.tags.map(tag =>
+      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag}</span>`
+    ).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
   }
+
+  const handleStartEvaluation = (evaluation: Evaluation) => {
+    // Open start evaluation modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">بدء التقييم النهائي: ${evaluation.projectTitle}</h3>
+        <div class="space-y-4">
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <h4 class="font-medium text-blue-900 mb-2">معلومات التقييم</h4>
+            <div class="text-sm text-blue-800 space-y-1">
+              <p><strong>الطلاب:</strong> ${evaluation.students.join(', ')}</p>
+              <p><strong>المشرف:</strong> ${evaluation.supervisor}</p>
+              <p><strong>التاريخ:</strong> ${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
+            </div>
+          </div>
+          
+          <form id="startEvaluationForm" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">درجة التقرير (0-50)</label>
+                <input type="number" name="reportGrade" min="0" max="50" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">درجة العرض (0-50)</label>
+                <input type="number" name="presentationGrade" min="0" max="50" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التعليقات</label>
+              <textarea name="comments" rows="4" required 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
+              <textarea name="recommendations" rows="3" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitEvaluation('${evaluation.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+            إرسال التقييم
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitEvaluation = (evaluationId: string) => {
+      const form = document.getElementById('startEvaluationForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const evaluationData = {
+        reportGrade: formData.get('reportGrade'),
+        presentationGrade: formData.get('presentationGrade'),
+        comments: formData.get('comments'),
+        recommendations: formData.get('recommendations')
+      }
+
+      console.log('Submitting evaluation:', evaluationId, evaluationData)
+      alert('تم إرسال التقييم بنجاح!')
+    }
+  }
+
+  const handleCompleteEvaluation = (evaluation: Evaluation) => {
+    if (window.confirm('هل أنت متأكد من إكمال هذا التقييم؟')) {
+      console.log('Completing evaluation:', evaluation.id)
+      alert('تم إكمال التقييم بنجاح!')
+    }
+  }
+
+  const columns = [
+    {
+      key: 'projectTitle',
+      label: 'المشروع',
+      sortable: true,
+      render: (e: Evaluation) => (
+        <div>
+          <h3 className="font-medium text-gray-900">{e.projectTitle}</h3>
+          <p className="text-xs text-gray-600">{e.students.join(', ')}</p>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      label: 'الحالة',
+      render: (e: Evaluation) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(e.status))}>{getStatusText(e.status)}</span>
+      )
+    },
+    {
+      key: 'defenseDate',
+      label: 'تاريخ المناقشة',
+      sortable: true,
+      render: (e: Evaluation) => (
+        <span className="text-sm text-gray-600">{new Date(e.defenseDate).toLocaleDateString('ar')}</span>
+      )
+    },
+    {
+      key: 'evaluator',
+      label: 'المقيم',
+      render: (e: Evaluation) => <span className="text-sm text-gray-600">{e.evaluator}</span>
+    },
+    {
+      key: 'finalGrade',
+      label: 'النهائية',
+      sortable: true,
+      render: (e: Evaluation) => <span className="text-sm text-gray-600">{e.finalGrade ? `${e.finalGrade}/100` : '-'}</span>
+    },
+    {
+      key: 'actions',
+      label: 'الإجراءات',
+      render: (e: Evaluation) => (
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <button onClick={() => handleViewEvaluation(e)} className="p-2 text-gray-400 hover:text-gray-600" title="عرض"><Eye size={16} /></button>
+          {e.status === 'pending' && (
+            <button onClick={() => handleStartEvaluation(e)} className="p-2 text-gray-400 hover:text-blue-600" title="بدء التقييم"><Edit size={16} /></button>
+          )}
+          {e.status === 'in_progress' && (
+            <button onClick={() => handleCompleteEvaluation(e)} className="p-2 text-gray-400 hover:text-green-600" title="إكمال"><CheckCircle size={16} /></button>
+          )}
+        </div>
+      )
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -293,7 +511,7 @@ const DiscussionEvaluations: React.FC = () => {
                     onPriorityChange={setPriorityFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -303,14 +521,14 @@ const DiscussionEvaluations: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="ml-1 rtl:ml-0 rtl:mr-1" />
                   تصفية التقييمات
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -335,8 +553,19 @@ const DiscussionEvaluations: React.FC = () => {
       {/* Evaluations Display */}
       {viewMode === 'table' ? (
         <Card className="hover-lift">
-          <CardContent className="text-center py-12">
-            <p className="text-gray-600">عرض الجدول - قيد التطوير</p>
+          <CardContent className="p-0">
+            <DataTable
+              data={filteredEvaluations}
+              columns={columns}
+              emptyMessage="لا توجد تقييمات"
+              className="min-h-[400px]"
+              onSort={(key, direction) => {
+                setSortBy(key)
+                setSortOrder(direction)
+              }}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+            />
           </CardContent>
         </Card>
       ) : (
@@ -376,7 +605,7 @@ const DiscussionEvaluations: React.FC = () => {
                     <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
                     <span>تاريخ المناقشة: {new Date(evaluation.defenseDate).toLocaleDateString('ar')}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <span>الأولوية:</span>
                     <span className={cn('px-2 py-1 text-xs rounded-full', getPriorityColor(evaluation.priority))}>
@@ -470,16 +699,28 @@ const DiscussionEvaluations: React.FC = () => {
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <div className="flex space-x-2 rtl:space-x-reverse">
-                    <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="عرض">
+                    <button
+                      onClick={() => handleViewEvaluation(evaluation)}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      title="عرض"
+                    >
                       <Eye size={16} />
                     </button>
                     {evaluation.status === 'pending' && (
-                      <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors" title="بدء التقييم">
+                      <button
+                        onClick={() => handleStartEvaluation(evaluation)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="بدء التقييم"
+                      >
                         <Edit size={16} />
                       </button>
                     )}
                     {evaluation.status === 'in_progress' && (
-                      <button className="p-2 text-gray-400 hover:text-green-600 transition-colors" title="إكمال التقييم">
+                      <button
+                        onClick={() => handleCompleteEvaluation(evaluation)}
+                        className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                        title="إكمال التقييم"
+                      >
                         <CheckCircle size={16} />
                       </button>
                     )}
@@ -489,7 +730,10 @@ const DiscussionEvaluations: React.FC = () => {
                       </button>
                     )}
                   </div>
-                  <button className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors">
+                  <button
+                    onClick={() => handleViewEvaluation(evaluation)}
+                    className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors"
+                  >
                     عرض التفاصيل
                   </button>
                 </div>

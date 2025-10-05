@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import DataTable from '../../components/ui/DataTable'
 import {
   Eye,
   Edit,
@@ -245,15 +246,282 @@ const CommitteeSchedules: React.FC = () => {
     setSortOrder('asc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (typeFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'date') count++
-    if (sortOrder !== 'asc') count++
-    return count
+  const handleAddSchedule = () => {
+    // Open add schedule modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">إضافة موعد جديد</h3>
+        <form id="addScheduleForm" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">عنوان الموعد</label>
+              <input type="text" name="title" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">نوع الموعد</label>
+              <select name="type" required 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">اختر النوع</option>
+                <option value="presentation">عرض تقديمي</option>
+                <option value="defense">مناقشة</option>
+                <option value="meeting">اجتماع</option>
+                <option value="workshop">ورشة عمل</option>
+                <option value="exam">امتحان</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+            <textarea name="description" rows="3" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
+              <input type="date" name="date" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">الوقت</label>
+              <input type="time" name="time" required 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">المكان</label>
+            <input type="text" name="location" required 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
+            <select name="priority" required 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">اختر الأولوية</option>
+              <option value="low">منخفض</option>
+              <option value="medium">متوسط</option>
+              <option value="high">عالي</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+            <textarea name="notes" rows="2" 
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+        </form>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إلغاء
+          </button>
+          <button onclick="window.submitSchedule(); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            إضافة الموعد
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add submit function to window
+    window.submitSchedule = () => {
+      const form = document.getElementById('addScheduleForm') as HTMLFormElement
+      const formData = new FormData(form)
+      const scheduleData = {
+        title: formData.get('title'),
+        type: formData.get('type'),
+        description: formData.get('description'),
+        date: formData.get('date'),
+        time: formData.get('time'),
+        location: formData.get('location'),
+        priority: formData.get('priority'),
+        notes: formData.get('notes')
+      }
+
+      // Simulate adding schedule
+      console.log('Adding new schedule:', scheduleData)
+      alert('تم إضافة الموعد بنجاح!')
+    }
   }
+
+  const handleViewSchedule = (schedule: Schedule) => {
+    // Open schedule details modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل الموعد</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">عنوان الموعد:</span>
+              <p class="text-gray-600">${schedule.title}</p>
+            </div>
+            <div>
+              <span class="font-medium">النوع:</span>
+              <p class="text-gray-600">${getTypeText(schedule.type)}</p>
+            </div>
+            <div>
+              <span class="font-medium">التاريخ:</span>
+              <p class="text-gray-600">${new Date(schedule.date).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الوقت:</span>
+              <p class="text-gray-600">${schedule.startTime} - ${schedule.endTime}</p>
+            </div>
+            <div>
+              <span class="font-medium">المكان:</span>
+              <p class="text-gray-600">${schedule.location}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${getStatusText(schedule.status)}</p>
+            </div>
+            <div>
+              <span class="font-medium">الأولوية:</span>
+              <p class="text-gray-600">${getPriorityText(schedule.priority)}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشاركون:</span>
+              <p class="text-gray-600">${schedule.participants.length} مشارك</p>
+            </div>
+          </div>
+          <div>
+            <span class="font-medium">الوصف:</span>
+            <p class="text-gray-600 mt-1">${schedule.description}</p>
+          </div>
+          ${schedule.notes ? `
+            <div>
+              <span class="font-medium">ملاحظات:</span>
+              <p class="text-gray-600 mt-1">${schedule.notes}</p>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+  }
+
+  const handleEditSchedule = (schedule: Schedule) => {
+    // Open edit schedule modal (similar to add but with pre-filled data)
+    console.log('Edit schedule:', schedule)
+    alert('وظيفة التعديل قيد التطوير')
+  }
+
+  const handleDeleteSchedule = (scheduleId: string) => {
+    if (window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
+      console.log('Delete schedule:', scheduleId)
+      alert('تم حذف الموعد بنجاح!')
+    }
+  }
+
+  const columns = [
+    {
+      key: 'title',
+      label: 'عنوان الموعد',
+      sortable: true,
+      render: (schedule: Schedule) => (
+        <div>
+          <h3 className="font-medium text-gray-900">{schedule.title}</h3>
+          <p className="text-sm text-gray-600 line-clamp-1">{schedule.description}</p>
+        </div>
+      )
+    },
+    {
+      key: 'type',
+      label: 'النوع',
+      render: (schedule: Schedule) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getTypeColor(schedule.type))}>
+          {getTypeText(schedule.type)}
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'الحالة',
+      render: (schedule: Schedule) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(schedule.status))}>
+          {getStatusText(schedule.status)}
+        </span>
+      )
+    },
+    {
+      key: 'date',
+      label: 'التاريخ',
+      sortable: true,
+      render: (schedule: Schedule) => (
+        <div>
+          <span className="text-sm text-gray-600">
+            {new Date(schedule.date).toLocaleDateString('ar')}
+          </span>
+          <div className="text-xs text-gray-500">
+            {schedule.startTime} - {schedule.endTime}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'location',
+      label: 'المكان',
+      render: (schedule: Schedule) => (
+        <span className="text-sm text-gray-600 line-clamp-1">{schedule.location}</span>
+      )
+    },
+    {
+      key: 'priority',
+      label: 'الأولوية',
+      sortable: true,
+      render: (schedule: Schedule) => (
+        <span className={cn('px-2 py-1 text-xs rounded-full', getPriorityColor(schedule.priority))}>
+          {getPriorityText(schedule.priority)}
+        </span>
+      )
+    },
+    {
+      key: 'participants',
+      label: 'المشاركون',
+      render: (schedule: Schedule) => (
+        <span className="text-sm text-gray-600">{schedule.participants.length} مشارك</span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'الإجراءات',
+      render: (schedule: Schedule) => (
+        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+          <button
+            onClick={() => handleViewSchedule(schedule)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            title="عرض"
+          >
+            <Eye size={16} />
+          </button>
+          <button
+            onClick={() => handleEditSchedule(schedule)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            title="تعديل"
+          >
+            <Edit size={16} />
+          </button>
+          <button
+            onClick={() => handleDeleteSchedule(schedule.id)}
+            className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+            title="حذف"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      )
+    }
+  ]
 
   return (
     <div className="space-y-6">
@@ -316,7 +584,7 @@ const CommitteeSchedules: React.FC = () => {
                     onTypeChange={setTypeFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -326,20 +594,23 @@ const CommitteeSchedules: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   {t('common.filter')}
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
               </SimplePopover>
 
-              <Button className="bg-gpms-dark text-white hover:bg-gpms-light">
+              <Button
+                onClick={handleAddSchedule}
+                className="bg-gpms-dark text-white hover:bg-gpms-light"
+              >
                 <Plus className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                 إضافة موعد
               </Button>
@@ -362,8 +633,19 @@ const CommitteeSchedules: React.FC = () => {
           {/* Schedules Display */}
           {viewMode === 'table' ? (
             <Card className="hover-lift">
-              <CardContent className="text-center py-12">
-                <p className="text-gray-600">عرض الجدول - قيد التطوير</p>
+              <CardContent className="p-0">
+                <DataTable
+                  data={filteredSchedules}
+                  columns={columns}
+                  emptyMessage="لا توجد مواعيد"
+                  className="min-h-[400px]"
+                  onSort={(key, direction) => {
+                    setSortBy(key)
+                    setSortOrder(direction)
+                  }}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -460,17 +742,32 @@ const CommitteeSchedules: React.FC = () => {
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                       <div className="flex space-x-2 rtl:space-x-reverse">
-                        <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="عرض">
+                        <button
+                          onClick={() => handleViewSchedule(schedule)}
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="عرض"
+                        >
                           <Eye size={16} />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors" title="تعديل">
+                        <button
+                          onClick={() => handleEditSchedule(schedule)}
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="تعديل"
+                        >
                           <Edit size={16} />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-red-600 transition-colors" title="حذف">
+                        <button
+                          onClick={() => handleDeleteSchedule(schedule.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                          title="حذف"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
-                      <button className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors">
+                      <button
+                        onClick={() => handleViewSchedule(schedule)}
+                        className="text-gpms-dark hover:text-gpms-light text-sm font-medium transition-colors"
+                      >
                         عرض التفاصيل
                       </button>
                     </div>

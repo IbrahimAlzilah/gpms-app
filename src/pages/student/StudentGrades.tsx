@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -8,8 +8,8 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
-import { 
-  Eye, 
+import {
+  Eye,
   Download,
   Award,
   FileText,
@@ -238,13 +238,66 @@ const StudentGrades: React.FC = () => {
   })
 
   const handleViewGrade = (grade: Grade) => {
-    console.log('View grade:', grade)
-    // Implement view functionality
+    // Open grade details modal
+    const details = `
+      التقييم: ${grade.evaluationType}
+      الدرجة: ${grade.score}/${grade.maxScore}
+      التقدير: ${grade.grade}
+      التاريخ: ${new Date(grade.evaluationDate).toLocaleDateString('ar')}
+      المشرف: ${grade.supervisorName}
+      ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
+    `
+
+    // Create a modal-like display
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold mb-4">تفاصيل التقييم</h3>
+        <div class="space-y-2 text-sm">
+          ${details.split('\n').map(line => line.trim()).filter(line => line).map(line =>
+      `<p class="py-1">${line}</p>`
+    ).join('')}
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
   }
 
   const handleDownloadGrade = (grade: Grade) => {
-    console.log('Download grade:', grade)
-    // Implement download functionality
+    // Create a downloadable grade report
+    const reportContent = `
+تقرير الدرجة
+=============
+
+اسم الطالب: ${grade.studentName}
+التقييم: ${grade.evaluationType}
+الدرجة: ${grade.score}/${grade.maxScore}
+التقدير: ${grade.grade}
+النسبة المئوية: ${grade.percentage}%
+التاريخ: ${new Date(grade.evaluationDate).toLocaleDateString('ar')}
+المشرف: ${grade.supervisorName}
+${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
+
+تم إنشاء التقرير في: ${new Date().toLocaleDateString('ar')}
+    `
+
+    // Create and download file
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `تقرير_الدرجة_${grade.evaluationType}_${new Date().toISOString().split('T')[0]}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const handleFilterClear = () => {
@@ -254,14 +307,6 @@ const StudentGrades: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (categoryFilter !== 'all') count++
-    if (statusFilter !== 'all') count++
-    if (sortBy !== 'evaluationDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   // Calculate overall statistics
   const finalGrades = grades.filter(g => g.status === 'final')
@@ -418,7 +463,7 @@ const StudentGrades: React.FC = () => {
                     onTypeChange={setCategoryFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -428,14 +473,14 @@ const StudentGrades: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, categoryFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
-                  {t('common.filter')} 
-                  {getActiveFiltersCount() > 0 && (
+                  {t('common.filter')}
+                  {getActiveFiltersCount(statusFilter, categoryFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, categoryFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>

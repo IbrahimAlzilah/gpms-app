@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -9,10 +9,10 @@ import DataTable from '../../components/ui/DataTable'
 import UnifiedProposalForm from '../../components/forms/UnifiedProposalForm'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
-import { 
-  Plus, 
-  Eye, 
-  Edit, 
+import {
+  Plus,
+  Eye,
+  Edit,
   Trash2,
   FileText,
   Grid3X3,
@@ -221,14 +221,6 @@ const StudentProposals: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (statusFilter !== 'all') count++
-    if (priorityFilter !== 'all') count++
-    if (sortBy !== 'submittedDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   const columns = [
     {
@@ -249,10 +241,10 @@ const StudentProposals: React.FC = () => {
         <span className={cn(
           'px-2 py-1 text-xs rounded-full',
           proposal.status === 'approved' ? 'bg-green-100 text-green-800' :
-          proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-          proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
-          proposal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
-          'bg-gray-100 text-gray-800'
+            proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+              proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                proposal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
         )}>
           {getStatusText(proposal.status)}
         </span>
@@ -377,7 +369,7 @@ const StudentProposals: React.FC = () => {
                     onPriorityChange={setPriorityFilter}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -387,14 +379,14 @@ const StudentProposals: React.FC = () => {
                   size="md"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
-                  {t('common.filter')} 
-                  {getActiveFiltersCount() > 0 && (
+                  {t('common.filter')}
+                  {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, priorityFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>
@@ -456,10 +448,10 @@ const StudentProposals: React.FC = () => {
                       <span className={cn(
                         'px-2 py-1 text-xs rounded-full',
                         proposal.status === 'approved' ? 'bg-green-100 text-green-800' :
-                        proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        proposal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
+                          proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              proposal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
                       )}>
                         {getStatusText(proposal.status)}
                       </span>

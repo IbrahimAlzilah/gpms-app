@@ -18,3 +18,7 @@ export { default as FilterField, FilterToggleField } from './ui/FilterField'
 
 // Layout Components
 export { default as ResponsiveLayout } from './layout/ResponsiveLayout'
+
+// Common Components
+export { default as SubMenu } from './common/SubMenu'
+export { StudentDocumentsExample, CompactHeaderMenu, sidebarMenuItems } from './common/SubMenuExample'

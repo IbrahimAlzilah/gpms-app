@@ -1,11 +1,12 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useAuth } from '../../context/AuthContext'
-import { 
-  FolderOpen, 
-  FileText, 
-  Send, 
-  Upload, 
+import {
+  FolderOpen,
+  FileText,
+  Send,
+  Upload,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -15,6 +16,7 @@ import {
 const StudentDashboard: React.FC = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Mock data
   const stats = [
@@ -139,7 +141,7 @@ const StudentDashboard: React.FC = () => {
                 pending: 'text-yellow-500',
                 warning: 'text-orange-500'
               }
-              
+
               return (
                 <div key={activity.id} className="flex items-start space-x-3 rtl:space-x-reverse">
                   <Icon size={20} className={`mt-1 ${statusColors[activity.status as keyof typeof statusColors]}`} />
@@ -164,11 +166,10 @@ const StudentDashboard: React.FC = () => {
                   <p className="text-sm font-medium text-gray-900">{deadline.title}</p>
                   <p className="text-xs text-gray-500">{deadline.date}</p>
                 </div>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  deadline.status === 'urgent' 
-                    ? 'bg-red-100 text-red-800' 
+                <span className={`px-2 py-1 text-xs rounded-full ${deadline.status === 'urgent'
+                    ? 'bg-red-100 text-red-800'
                     : 'bg-blue-100 text-blue-800'
-                }`}>
+                  }`}>
                   {deadline.status === 'urgent' ? 'عاجل' : 'عادي'}
                 </span>
               </div>
@@ -181,15 +182,24 @@ const StudentDashboard: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">الإجراءات السريعة</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/student/proposals')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <FileText size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">{t('student.submitProposal')}</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/student/documents')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Upload size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">{t('student.uploadDocuments')}</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/student/projects')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <TrendingUp size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">{t('student.trackProgress')}</span>
           </button>

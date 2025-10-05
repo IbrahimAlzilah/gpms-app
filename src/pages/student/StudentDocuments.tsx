@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
-import { cn } from '../../lib/utils'
+import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
@@ -272,13 +272,103 @@ const StudentDocuments: React.FC = () => {
   }
 
   const handleViewDocument = (document: Document) => {
-    console.log('View document:', document)
-    // Implement view functionality
+    // Open document preview modal
+    const modal = document.createElement('div')
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">معاينة المستند</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="font-medium">اسم المستند:</span>
+              <p class="text-gray-600">${document.name}</p>
+            </div>
+            <div>
+              <span class="font-medium">النوع:</span>
+              <p class="text-gray-600">${document.type}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحجم:</span>
+              <p class="text-gray-600">${document.size}</p>
+            </div>
+            <div>
+              <span class="font-medium">تاريخ الرفع:</span>
+              <p class="text-gray-600">${new Date(document.uploadedDate).toLocaleDateString('ar')}</p>
+            </div>
+            <div>
+              <span class="font-medium">الحالة:</span>
+              <p class="text-gray-600">${document.status}</p>
+            </div>
+            <div>
+              <span class="font-medium">المشروع:</span>
+              <p class="text-gray-600">${document.projectTitle}</p>
+            </div>
+          </div>
+          ${document.description ? `
+            <div>
+              <span class="font-medium">الوصف:</span>
+              <p class="text-gray-600 mt-1">${document.description}</p>
+            </div>
+          ` : ''}
+          ${document.notes ? `
+            <div>
+              <span class="font-medium">ملاحظات:</span>
+              <p class="text-gray-600 mt-1">${document.notes}</p>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
+          <button onclick="this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+            إغلاق
+          </button>
+          <button onclick="window.downloadDocument('${document.id}'); this.closest('.fixed').remove()" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            تحميل
+          </button>
+        </div>
+      </div>
+    `
+    document.body.appendChild(modal)
+
+    // Add download function to window for the button
+    window.downloadDocument = (docId: string) => {
+      const doc = documents.find(d => d.id === docId)
+      if (doc) {
+        handleDownloadDocument(doc)
+      }
+    }
   }
 
   const handleDownloadDocument = (document: Document) => {
-    console.log('Download document:', document)
-    // Implement download functionality
+    // Simulate document download
+    const link = document.createElement('a')
+    link.href = '#' // In real app, this would be the actual file URL
+    link.download = document.name
+
+    // Create a simple text file as placeholder
+    const content = `
+مستند: ${document.name}
+النوع: ${document.type}
+الحجم: ${document.size}
+تاريخ الرفع: ${new Date(document.uploadedDate).toLocaleDateString('ar')}
+الحالة: ${document.status}
+المشروع: ${document.projectTitle}
+${document.description ? `الوصف: ${document.description}` : ''}
+${document.notes ? `ملاحظات: ${document.notes}` : ''}
+
+ملاحظة: هذا ملف تجريبي. في التطبيق الحقيقي، سيتم تحميل الملف الفعلي.
+    `
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    link.href = url
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const handleModalSubmit = (data: any) => {
@@ -310,14 +400,6 @@ const StudentDocuments: React.FC = () => {
     setSortOrder('desc')
   }
 
-  const getActiveFiltersCount = () => {
-    let count = 0
-    if (typeFilter !== 'all') count++
-    if (statusFilter !== 'all') count++
-    if (sortBy !== 'uploadedDate') count++
-    if (sortOrder !== 'desc') count++
-    return count
-  }
 
   const columns = [
     {
@@ -489,14 +571,14 @@ const StudentDocuments: React.FC = () => {
                   size="sm"
                   className={cn(
                     'relative',
-                    getActiveFiltersCount() > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
+                    getActiveFiltersCount(statusFilter, typeFilter, searchQuery, sortBy, sortOrder) > 0 && 'bg-gpms-light/10 border-gpms-light text-gpms-dark'
                   )}
                 >
                   <SlidersHorizontal size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
                   {t('common.filter')}
-                  {getActiveFiltersCount() > 0 && (
+                  {getActiveFiltersCount(statusFilter, typeFilter, searchQuery, sortBy, sortOrder) > 0 && (
                     <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 bg-gpms-dark text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {getActiveFiltersCount()}
+                      {getActiveFiltersCount(statusFilter, typeFilter, searchQuery, sortBy, sortOrder)}
                     </span>
                   )}
                 </Button>

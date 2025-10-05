@@ -1,10 +1,11 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useAuth } from '../../context/AuthContext'
-import { 
-  Award, 
-  Users, 
-  Calendar, 
+import {
+  Award,
+  Users,
+  Calendar,
   FileText,
   CheckCircle,
   Clock,
@@ -17,6 +18,7 @@ import {
 const DiscussionDashboard: React.FC = () => {
   const { t } = useLanguage()
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // Mock data
   const stats = [
@@ -170,13 +172,12 @@ const DiscussionDashboard: React.FC = () => {
                       المكان: {discussion.venue}
                     </p>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    discussion.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${discussion.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
                     {discussion.status === 'scheduled' ? 'مجدولة' : 'معلقة'}
                   </span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <button className="text-xs text-gpms-dark hover:text-gpms-light font-medium">
                     عرض التفاصيل
@@ -219,7 +220,7 @@ const DiscussionDashboard: React.FC = () => {
                     <p className="text-xs text-gray-500">من 100</p>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                     مكتمل
@@ -250,9 +251,9 @@ const DiscussionDashboard: React.FC = () => {
                   <p className="text-xs text-gray-500">متوسط</p>
                 </div>
               </div>
-              
+
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className="bg-gpms-light h-2 rounded-full transition-all duration-300"
                   style={{ width: `${criteria.average}%` }}
                 />
@@ -266,19 +267,31 @@ const DiscussionDashboard: React.FC = () => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">الإجراءات السريعة</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/discussion/evaluations')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Award size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">تقييم المشاريع</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/discussion/projects')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <Calendar size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">جدولة المناقشات</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/discussion/evaluations')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <ClipboardList size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">نماذج التقييم</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors">
+          <button
+            onClick={() => navigate('/discussion/projects')}
+            className="flex items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gpms-light hover:bg-gpms-light/5 transition-colors"
+          >
             <BarChart3 size={24} className="text-gray-400 mr-3 rtl:ml-3 rtl:mr-0" />
             <span className="text-gray-600">تقارير الدرجات</span>
           </button>
