@@ -48,7 +48,7 @@ const StudentProposals: React.FC = () => {
   // Check if proposal submission period is open using the hook
   const submissionPeriodCheck = checkSubmissionPeriod(user?.role || 'student')
   const isSubmissionPeriodOpen = () => submissionPeriodCheck.isOpen
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [submittedByFilter, setsubmittedByFilter] = useState('all')
   const [sortBy, setSortBy] = useState('submittedDate')
@@ -139,18 +139,18 @@ const StudentProposals: React.FC = () => {
     { value: 'rejected', label: 'مرفوض' }
   ]
 
-  const submittedByOptions = [
-    { value: 'all', label: 'جميع الأولويات' },
-    { value: 'low', label: 'منخفض' },
-    { value: 'medium', label: 'متوسط' },
-    { value: 'high', label: 'عالي' }
-  ]
+  const submittedByOptions = useMemo(() => {
+    const names = Array.from(new Set((proposals || [])
+      .map(p => p.submittedBy)
+      .filter((v): v is string => !!v)))
+    return [{ value: 'all', label: 'الكل' }, ...names.map(n => ({ value: n, label: n }))]
+  }, [proposals])
 
   const sortOptions = [
     { value: 'submittedDate', label: 'تاريخ التقديم' },
     { value: 'title', label: 'العنوان' },
     { value: 'status', label: 'الحالة' },
-    { value: 'submittedBy', label: 'الأولوية' },
+    { value: 'submittedBy', label: 'قدم بواسطة' },
     { value: 'score', label: 'الدرجة' }
   ]
 
@@ -165,23 +165,7 @@ const StudentProposals: React.FC = () => {
     }
   }
 
-  const getsubmittedByColor = (submittedBy: string) => {
-    switch (submittedBy) {
-      case 'low': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'high': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getsubmittedByText = (submittedBy: string) => {
-    switch (submittedBy) {
-      case 'low': return 'منخفض'
-      case 'medium': return 'متوسط'
-      case 'high': return 'عالي'
-      default: return submittedBy
-    }
-  }
+  // Removed misleading submittedBy color helpers; we'll show department as a neutral badge
 
   const myName = useMemo(() => user?.fullName || 'Me', [user])
   const isEnrolledInProject = false // TODO: wire with actual enrollment state
@@ -344,7 +328,7 @@ const StudentProposals: React.FC = () => {
       )
     },
     {
-      key: 'submittedBy',
+      key: 'department',
       label: 'القسم/التخصص',
       render: (proposal: Proposal) => (
         <p className="text-sm text-gray-600 line-clamp-1">{proposal.department}</p>
@@ -584,9 +568,11 @@ const StudentProposals: React.FC = () => {
                       </div>
 
                       <div className="flex items-center justify-between mb-4">
-                        <span className={cn('px-2 py-1 text-xs rounded-full', getsubmittedByColor(proposal.submittedBy || ''))}>
-                          {getsubmittedByText(proposal.submittedBy || '')}
-                        </span>
+                        {proposal.department && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                            {proposal.department}
+                          </span>
+                        )}
                       </div>
 
                       {proposal.tags.length > 0 && (

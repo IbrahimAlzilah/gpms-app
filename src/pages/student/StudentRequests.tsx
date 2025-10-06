@@ -7,6 +7,8 @@ import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import RequestFormModal from '../../components/forms/RequestFormModal'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
 import {
@@ -49,6 +51,8 @@ const StudentRequests: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRequest, setEditingRequest] = useState<Request | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [requestIdToDelete, setRequestIdToDelete] = useState<string | null>(null)
 
   // Mock data
   const [requests, setRequests] = useState<Request[]>([
@@ -265,77 +269,26 @@ const StudentRequests: React.FC = () => {
   }
 
   const handleDeleteRequest = (requestId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الطلب؟')) {
-      setRequests(prev => prev.filter(r => r.id !== requestId))
-    }
+    setRequestIdToDelete(requestId)
+    setConfirmDeleteOpen(true)
   }
 
+  const confirmDelete = () => {
+    if (requestIdToDelete) {
+      setRequests(prev => prev.filter(r => r.id !== requestIdToDelete))
+    }
+    setConfirmDeleteOpen(false)
+    setRequestIdToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setRequestIdToDelete(null)
+  }
+
+  const [viewRequest, setViewRequest] = useState<Request | null>(null)
   const handleViewRequest = (request: Request) => {
-    // Open request details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل الطلب</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">نوع الطلب:</span>
-              <p class="text-gray-600">${request.type}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${request.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${request.priority}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ الإرسال:</span>
-              <p class="text-gray-600">${new Date(request.submittedAt).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ التحديث:</span>
-              <p class="text-gray-600">${request.updatedAt ? new Date(request.updatedAt).toLocaleDateString('ar') : 'غير محدد'}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشرف:</span>
-              <p class="text-gray-600">${request.supervisor}</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${request.description}</p>
-          </div>
-          ${request.reason ? `
-            <div>
-              <span class="font-medium">السبب:</span>
-              <p class="text-gray-600 mt-1">${request.reason}</p>
-            </div>
-          ` : ''}
-          ${request.response ? `
-            <div>
-              <span class="font-medium">الرد:</span>
-              <p class="text-gray-600 mt-1">${request.response}</p>
-            </div>
-          ` : ''}
-          ${request.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${request.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewRequest(request)
   }
 
   const handleModalSubmit = (data: any) => {
@@ -731,6 +684,49 @@ const StudentRequests: React.FC = () => {
         onSubmit={handleModalSubmit}
         editData={editingRequest}
       />
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذه العملية."
+        variant="destructive"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
+      <Modal
+        isOpen={!!viewRequest}
+        onClose={() => setViewRequest(null)}
+        title={viewRequest ? `تفاصيل الطلب: ${viewRequest.title}` : 'تفاصيل الطلب'}
+        size="lg"
+      >
+        {viewRequest && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">النوع:</span> {getTypeText(viewRequest.type)}</div>
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewRequest.status)}</div>
+              <div><span className="font-medium">الأولوية:</span> {getPriorityText(viewRequest.priority)}</div>
+              <div><span className="font-medium">تاريخ الإرسال:</span> {new Date(viewRequest.createdAt).toLocaleDateString('ar')}</div>
+              <div><span className="font-medium">تاريخ التحديث:</span> {new Date(viewRequest.updatedAt).toLocaleDateString('ar')}</div>
+              {viewRequest.supervisor && (<div><span className="font-medium">المشرف:</span> {viewRequest.supervisor}</div>)}
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1 text-gray-600">{viewRequest.description}</p>
+            </div>
+            {viewRequest.reason && (
+              <div>
+                <span className="font-medium">السبب:</span>
+                <p className="mt-1 text-gray-600">{viewRequest.reason}</p>
+              </div>
+            )}
+            {viewRequest.response && (
+              <div className={`${viewRequest.status === 'approved' ? 'bg-green-50 border border-green-200' : viewRequest.status === 'rejected' ? 'bg-red-50 border border-red-200' : 'bg-blue-50 border border-blue-200'} rounded-lg p-3`}>
+                <h4 className="text-sm font-medium text-gray-700 mb-1">الرد:</h4>
+                <p className="text-sm text-gray-600">{viewRequest.response}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

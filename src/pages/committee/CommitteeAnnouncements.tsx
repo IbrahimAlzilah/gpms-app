@@ -6,7 +6,9 @@ import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
 import Input from '../../components/ui/Input'
 import { Form, FormGroup, FormLabel, FormError } from '../../components/ui/Form'
-import { 
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import {
   Megaphone,
   Calendar,
   Clock,
@@ -144,8 +146,8 @@ const CommitteeAnnouncements: React.FC = () => {
 
       if (editingAnnouncement) {
         // Update existing announcement
-        setAnnouncements(prev => prev.map(a => 
-          a.id === editingAnnouncement.id 
+        setAnnouncements(prev => prev.map(a =>
+          a.id === editingAnnouncement.id
             ? { ...a, ...formData, updatedAt: new Date().toISOString().split('T')[0] }
             : a
         ))
@@ -194,10 +196,22 @@ const CommitteeAnnouncements: React.FC = () => {
     setIsModalOpen(true)
   }
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [announcementIdToDelete, setAnnouncementIdToDelete] = useState<string | null>(null)
   const handleDelete = (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الإعلان؟')) {
-      setAnnouncements(prev => prev.filter(a => a.id !== id))
+    setAnnouncementIdToDelete(id)
+    setConfirmDeleteOpen(true)
+  }
+  const confirmDelete = () => {
+    if (announcementIdToDelete) {
+      setAnnouncements(prev => prev.filter(a => a.id !== announcementIdToDelete))
     }
+    setConfirmDeleteOpen(false)
+    setAnnouncementIdToDelete(null)
+  }
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setAnnouncementIdToDelete(null)
   }
 
   return (
@@ -300,100 +314,108 @@ const CommitteeAnnouncements: React.FC = () => {
       </Card>
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {editingAnnouncement ? 'تعديل الإعلان' : 'إعلان جديد'}
-            </h2>
-            <Form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <FormGroup>
-                  <FormLabel htmlFor="title" required>عنوان الإعلان</FormLabel>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="أدخل عنوان الإعلان..."
-                    error={errors.title}
-                  />
-                </FormGroup>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingAnnouncement ? 'تعديل الإعلان' : 'إعلان جديد'}
+        size="lg"
+        onSubmit={handleSubmit}
+      >
+        <Form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <FormGroup>
+              <FormLabel htmlFor="title" required>عنوان الإعلان</FormLabel>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="أدخل عنوان الإعلان..."
+                error={errors.title}
+              />
+            </FormGroup>
 
-                <FormGroup>
-                  <FormLabel htmlFor="description" required>وصف الإعلان</FormLabel>
-                  <textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="أدخل وصف الإعلان..."
-                    rows={4}
-                    className={cn(
-                      'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent',
-                      errors.description && 'border-red-500'
-                    )}
-                  />
-                  {errors.description && <FormError>{errors.description}</FormError>}
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel htmlFor="type" required>نوع الإعلان</FormLabel>
-                  <select
-                    id="type"
-                    value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as Announcement['type'] }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent"
-                  >
-                    {announcementTypes.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </FormGroup>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormGroup>
-                    <FormLabel htmlFor="startDate" required>تاريخ البداية</FormLabel>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                      error={errors.startDate}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel htmlFor="endDate" required>تاريخ النهاية</FormLabel>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                      error={errors.endDate}
-                    />
-                  </FormGroup>
-                </div>
-
-                {errors.general && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    {errors.general}
-                  </div>
+            <FormGroup>
+              <FormLabel htmlFor="description" required>وصف الإعلان</FormLabel>
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="أدخل وصف الإعلان..."
+                rows={4}
+                className={cn(
+                  'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent',
+                  errors.description && 'border-red-500'
                 )}
+              />
+              {errors.description && <FormError>{errors.description}</FormError>}
+            </FormGroup>
 
-                <div className="flex justify-end space-x-4 rtl:space-x-reverse pt-4 border-t">
-                  <Button variant="outline" type="button" onClick={handleCloseModal}>
-                    إلغاء
-                  </Button>
-                  <Button type="submit" loading={isLoading}>
-                    <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                    {editingAnnouncement ? 'تحديث' : 'حفظ'}
-                  </Button>
-                </div>
+            <FormGroup>
+              <FormLabel htmlFor="type" required>نوع الإعلان</FormLabel>
+              <select
+                id="type"
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as Announcement['type'] }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              >
+                {announcementTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </FormGroup>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormGroup>
+                <FormLabel htmlFor="startDate" required>تاريخ البداية</FormLabel>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  error={errors.startDate}
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="endDate" required>تاريخ النهاية</FormLabel>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  error={errors.endDate}
+                />
+              </FormGroup>
+            </div>
+
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {errors.general}
               </div>
-            </Form>
+            )}
+
+            <div className="flex justify-end space-x-4 rtl:space-x-reverse pt-4 border-t">
+              <Button variant="outline" type="button" onClick={handleCloseModal}>
+                إلغاء
+              </Button>
+              <Button type="submit" loading={isLoading}>
+                <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                {editingAnnouncement ? 'تحديث' : 'حفظ'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        </Form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذا الإعلان؟ لا يمكن التراجع عن ذلك."
+        variant="destructive"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </div>
   )
 }

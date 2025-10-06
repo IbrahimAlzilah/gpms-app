@@ -7,6 +7,8 @@ import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import DataTable from '../../components/ui/DataTable'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Eye,
   Edit,
@@ -52,6 +54,29 @@ const AdminUsers: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState<{ name: string; email: string; phone: string; role: User['role']; department: string; studentId: string; status: User['status'] }>({
+    name: '', email: '', phone: '', role: 'student', department: '', studentId: '', status: 'active'
+  })
+  const [permissionsUser, setPermissionsUser] = useState<User | null>(null)
+  const allPermissions = [
+    { key: 'view_projects', label: 'عرض المشاريع' },
+    { key: 'submit_proposals', label: 'تقديم المقترحات' },
+    { key: 'supervise_projects', label: 'الإشراف على المشاريع' },
+    { key: 'evaluate_proposals', label: 'تقييم المقترحات' },
+    { key: 'manage_students', label: 'إدارة الطلاب' },
+    { key: 'review_projects', label: 'مراجعة المشاريع' },
+    { key: 'approve_proposals', label: 'الموافقة على المقترحات' },
+    { key: 'manage_schedules', label: 'إدارة الجداول' },
+    { key: 'evaluate_final_projects', label: 'تقييم المشاريع النهائية' },
+    { key: 'conduct_defense', label: 'إجراء المناقشات' },
+    { key: 'full_access', label: 'وصول كامل' },
+    { key: 'manage_users', label: 'إدارة المستخدمين' },
+    { key: 'system_settings', label: 'إعدادات النظام' }
+  ]
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [viewUser, setViewUser] = useState<User | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
 
   // Mock data - مستخدمي النظام
@@ -239,163 +264,32 @@ const AdminUsers: React.FC = () => {
 
 
   const handleEditUser = (user: User) => {
-    // Open edit user modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تعديل المستخدم: ${user.name}</h3>
-        <form id="editUserForm" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الاسم</label>
-              <input type="text" name="name" value="${user.name}" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
-              <input type="email" name="email" value="${user.email}" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف</label>
-              <input type="tel" name="phone" value="${user.phone || ''}" 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الدور</label>
-              <select name="role" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="student" ${user.role === 'student' ? 'selected' : ''}>طالب</option>
-                <option value="supervisor" ${user.role === 'supervisor' ? 'selected' : ''}>مشرف</option>
-                <option value="committee" ${user.role === 'committee' ? 'selected' : ''}>لجنة المشاريع</option>
-                <option value="discussion" ${user.role === 'discussion' ? 'selected' : ''}>لجنة المناقشة</option>
-                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>مدير النظام</option>
-              </select>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">القسم</label>
-              <input type="text" name="department" value="${user.department || ''}" 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">رقم الطالب</label>
-              <input type="text" name="studentId" value="${user.studentId || ''}" 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
-            <select name="status" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="active" ${user.status === 'active' ? 'selected' : ''}>نشط</option>
-              <option value="inactive" ${user.status === 'inactive' ? 'selected' : ''}>غير نشط</option>
-              <option value="pending" ${user.status === 'pending' ? 'selected' : ''}>في الانتظار</option>
-              <option value="suspended" ${user.status === 'suspended' ? 'selected' : ''}>معلق</option>
-            </select>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitUserEdit('${user.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            حفظ التعديلات
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitUserEdit = (userId: string) => {
-      const form = document.getElementById('editUserForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const userData = {
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        role: formData.get('role'),
-        department: formData.get('department'),
-        studentId: formData.get('studentId'),
-        status: formData.get('status')
-      }
-
-      console.log('Updating user:', userId, userData)
-      alert('تم تحديث المستخدم بنجاح!')
-    }
+    setEditingUser(user)
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role,
+      department: user.department || '',
+      studentId: user.studentId || '',
+      status: user.status
+    })
+    setIsEditModalOpen(true)
   }
 
   const handleManagePermissions = (user: User) => {
-    // Open permissions management modal
-    const permissions = [
-      { key: 'view_projects', label: 'عرض المشاريع' },
-      { key: 'submit_proposals', label: 'تقديم المقترحات' },
-      { key: 'supervise_projects', label: 'الإشراف على المشاريع' },
-      { key: 'evaluate_proposals', label: 'تقييم المقترحات' },
-      { key: 'manage_students', label: 'إدارة الطلاب' },
-      { key: 'review_projects', label: 'مراجعة المشاريع' },
-      { key: 'approve_proposals', label: 'الموافقة على المقترحات' },
-      { key: 'manage_schedules', label: 'إدارة الجداول' },
-      { key: 'evaluate_final_projects', label: 'تقييم المشاريع النهائية' },
-      { key: 'conduct_defense', label: 'إجراء المناقشات' },
-      { key: 'full_access', label: 'وصول كامل' },
-      { key: 'manage_users', label: 'إدارة المستخدمين' },
-      { key: 'system_settings', label: 'إعدادات النظام' }
-    ]
+    setPermissionsUser(user)
+    setSelectedPermissions([...(user.permissions || [])])
+    setIsPermissionsModalOpen(true)
+  }
 
-    const currentPermissions = user.permissions || []
+  const handleViewUser = (user: User) => {
+    setViewUser(user)
+  }
 
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">إدارة صلاحيات المستخدم: ${user.name}</h3>
-        <div class="space-y-4">
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-medium text-blue-900 mb-2">الدور الحالي: ${getRoleText(user.role)}</h4>
-            <p class="text-sm text-blue-800">يمكنك تعديل الصلاحيات أدناه</p>
-          </div>
-          
-          <div class="grid grid-cols-1 gap-3">
-            ${permissions.map(permission => `
-              <label class="flex items-center space-x-3 rtl:space-x-reverse">
-                <input type="checkbox" name="permissions" value="${permission.key}" 
-                       ${currentPermissions.includes(permission.key) ? 'checked' : ''}
-                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                <span class="text-sm text-gray-700">${permission.label}</span>
-              </label>
-            `).join('')}
-          </div>
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitPermissions('${user.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-            حفظ الصلاحيات
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitPermissions = (userId: string) => {
-      const checkboxes = document.querySelectorAll('input[name="permissions"]:checked')
-      const selectedPermissions = Array.from(checkboxes).map(cb => (cb as HTMLInputElement).value)
-
-      console.log('Updating permissions for user:', userId, selectedPermissions)
-      alert('تم تحديث الصلاحيات بنجاح!')
-    }
+  const handleAskDelete = (user: User) => {
+    setUserIdToDelete(user.id)
+    setConfirmDeleteOpen(true)
   }
 
   const columns = [
@@ -428,10 +322,10 @@ const AdminUsers: React.FC = () => {
       label: 'الإجراءات',
       render: (user: User) => (
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          <button className="p-2 text-gray-400 hover:text-gray-600" title="عرض"><Eye size={16} /></button>
+          <button onClick={() => handleViewUser(user)} className="p-2 text-gray-400 hover:text-gray-600" title="عرض"><Eye size={16} /></button>
           <button onClick={() => handleEditUser(user)} className="p-2 text-gray-400 hover:text-gray-600" title="تعديل"><Edit size={16} /></button>
           <button onClick={() => handleManagePermissions(user)} className="p-2 text-gray-400 hover:text-blue-600" title="إدارة الصلاحيات"><Shield size={16} /></button>
-          <button className="p-2 text-gray-400 hover:text-red-600" title="حذف"><Trash2 size={16} /></button>
+          <button onClick={() => handleAskDelete(user)} className="p-2 text-gray-400 hover:text-red-600" title="حذف"><Trash2 size={16} /></button>
         </div>
       )
     }
@@ -594,7 +488,7 @@ const AdminUsers: React.FC = () => {
                       <span>{user.phone}</span>
                     </div>
                   )}
-                  
+
                   {user.studentId && (
                     <div className="flex items-center text-sm text-gray-600">
                       <Shield size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
@@ -707,6 +601,153 @@ const AdminUsers: React.FC = () => {
           </CardContent>
         </Card>
       )}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={editingUser ? `تعديل المستخدم: ${editingUser.name}` : 'تعديل المستخدم'}
+        onSubmit={(e) => {
+          e?.preventDefault()
+          console.log('Updating user:', editingUser?.id, editForm)
+          setIsEditModalOpen(false)
+        }}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الاسم</label>
+              <input className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.name} onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">البريد الإلكتروني</label>
+              <input type="email" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.email} onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))} required />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">رقم الهاتف</label>
+              <input className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.phone} onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الدور</label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.role} onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value as User['role'] }))}>
+                <option value="student">طالب</option>
+                <option value="supervisor">مشرف</option>
+                <option value="committee">لجنة المشاريع</option>
+                <option value="discussion">لجنة المناقشة</option>
+                <option value="admin">مدير النظام</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">القسم</label>
+              <input className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.department} onChange={(e) => setEditForm(prev => ({ ...prev, department: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">رقم الطالب</label>
+              <input className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.studentId} onChange={(e) => setEditForm(prev => ({ ...prev, studentId: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
+            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent" value={editForm.status} onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value as User['status'] }))}>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
+              <option value="pending">في الانتظار</option>
+              <option value="suspended">معلق</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isPermissionsModalOpen}
+        onClose={() => setIsPermissionsModalOpen(false)}
+        title={permissionsUser ? `إدارة صلاحيات: ${permissionsUser.name}` : 'إدارة الصلاحيات'}
+        onSubmit={(e) => {
+          e?.preventDefault()
+          console.log('Updating permissions for user:', permissionsUser?.id, selectedPermissions)
+          setIsPermissionsModalOpen(false)
+        }}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-lg text-blue-900 text-sm">
+            <div>الدور الحالي: {permissionsUser ? getRoleText(permissionsUser.role) : ''}</div>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {allPermissions.map((permission) => (
+              <label key={permission.key} className="flex items-center space-x-3 rtl:space-x-reverse">
+                <input
+                  type="checkbox"
+                  checked={selectedPermissions.includes(permission.key)}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setSelectedPermissions(prev => checked ? [...prev, permission.key] : prev.filter(p => p !== permission.key))
+                  }}
+                  className="rounded border-gray-300 text-gpms-dark focus:ring-gpms-light"
+                />
+                <span className="text-sm text-gray-700">{permission.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!viewUser}
+        onClose={() => setViewUser(null)}
+        title={viewUser ? `تفاصيل المستخدم: ${viewUser.name}` : 'تفاصيل المستخدم'}
+        size="lg"
+      >
+        {viewUser && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">البريد:</span> {viewUser.email}</div>
+              <div><span className="font-medium">الدور:</span> {getRoleText(viewUser.role)}</div>
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewUser.status)}</div>
+              {viewUser.phone && (<div><span className="font-medium">الهاتف:</span> {viewUser.phone}</div>)}
+              {viewUser.department && (<div><span className="font-medium">القسم:</span> {viewUser.department}</div>)}
+              {viewUser.studentId && (<div><span className="font-medium">الرقم الجامعي:</span> {viewUser.studentId}</div>)}
+              <div><span className="font-medium">انضم:</span> {new Date(viewUser.joinDate).toLocaleDateString('ar')}</div>
+              {viewUser.lastLogin && (<div><span className="font-medium">آخر دخول:</span> {new Date(viewUser.lastLogin).toLocaleDateString('ar')}</div>)}
+            </div>
+            {viewUser.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewUser.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+            {viewUser.permissions?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewUser.permissions.map((p, i) => (
+                  <span key={i} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">{p.replace('_', ' ')}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل تريد حذف هذا المستخدم؟"
+        variant="destructive"
+        onConfirm={() => {
+          if (userIdToDelete) {
+            console.log('Deleting user:', userIdToDelete)
+          }
+          setConfirmDeleteOpen(false)
+          setUserIdToDelete(null)
+        }}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setUserIdToDelete(null)
+        }}
+      />
     </div>
   )
 }

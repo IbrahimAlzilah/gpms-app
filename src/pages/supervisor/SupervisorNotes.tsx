@@ -8,6 +8,7 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Edit,
   Trash2,
@@ -38,6 +39,8 @@ const SupervisorNotes: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
   const [isEditing, setIsEditing] = useState<Note | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null)
 
   const [notes, setNotes] = useState<Note[]>([
     {
@@ -145,8 +148,21 @@ const SupervisorNotes: React.FC = () => {
   }
 
   const handleDelete = (id: string) => {
-    if (!window.confirm('هل تريد حذف هذه الملاحظة؟')) return
-    setNotes(prev => prev.filter(n => n.id !== id))
+    setNoteIdToDelete(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (noteIdToDelete) {
+      setNotes(prev => prev.filter(n => n.id !== noteIdToDelete))
+    }
+    setConfirmDeleteOpen(false)
+    setNoteIdToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setNoteIdToDelete(null)
   }
 
   const handleFilterClear = () => {

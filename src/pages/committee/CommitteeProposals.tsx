@@ -8,6 +8,8 @@ import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import DataTable from '../../components/ui/DataTable'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Modal from '../../components/ui/Modal'
 import {
   Eye,
   Edit,
@@ -46,6 +48,13 @@ const CommitteeProposals: React.FC = () => {
   const [sortBy, setSortBy] = useState('submittedDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
+  const [confirmApproveOpen, setConfirmApproveOpen] = useState(false)
+  const [proposalIdToApprove, setProposalIdToApprove] = useState<string | null>(null)
+  const [modificationOpen, setModificationOpen] = useState(false)
+  const [rejectionOpen, setRejectionOpen] = useState(false)
+  const [targetProposalId, setTargetProposalId] = useState<string | null>(null)
+  const [modificationRequest, setModificationRequest] = useState('')
+  const [rejectionReason, setRejectionReason] = useState('')
 
   // Mock data
   const [proposals] = useState<Proposal[]>([
@@ -211,131 +220,39 @@ const CommitteeProposals: React.FC = () => {
     setSortOrder('desc')
   }
 
+  const [viewProposal, setViewProposal] = useState<Proposal | null>(null)
   const handleViewProposal = (proposal: Proposal) => {
-    // Open proposal details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل المقترح</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">عنوان المقترح:</span>
-              <p class="text-gray-600">${proposal.title}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${proposal.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${proposal.priority}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ التقديم:</span>
-              <p class="text-gray-600">${new Date(proposal.submittedDate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطلاب:</span>
-              <p class="text-gray-600">${proposal.students.join(', ')}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشرف المقترح:</span>
-              <p class="text-gray-600">${proposal.supervisor}</p>
-            </div>
-            <div>
-              <span class="font-medium">المدة المتوقعة:</span>
-              <p class="text-gray-600">${proposal.duration} أشهر</p>
-            </div>
-            <div>
-              <span class="font-medium">الميزانية:</span>
-              <p class="text-gray-600">${proposal.budget} ريال</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${proposal.description}</p>
-          </div>
-          ${proposal.objectives && proposal.objectives.length > 0 ? `
-            <div>
-              <span class="font-medium">الأهداف:</span>
-              <ul class="list-disc list-inside text-gray-600 mt-1 space-y-1">
-                ${proposal.objectives.map(objective => `<li>${objective}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          ${proposal.technologies && proposal.technologies.length > 0 ? `
-            <div>
-              <span class="font-medium">التقنيات المستخدمة:</span>
-              <div class="flex flex-wrap gap-2 mt-1">
-                ${proposal.technologies.map(tech =>
-      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tech}</span>`
-    ).join('')}
-              </div>
-            </div>
-          ` : ''}
-          ${proposal.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${proposal.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-          ${proposal.status === 'pending' ? `
-            <button onclick="window.approveProposal('${proposal.id}'); this.closest('.fixed').remove()" 
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-              موافقة
-            </button>
-            <button onclick="window.rejectProposal('${proposal.id}'); this.closest('.fixed').remove()" 
-                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-              رفض
-            </button>
-          ` : ''}
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add action functions to window
-    window.approveProposal = (proposalId: string) => {
-      handleApproveProposal(proposalId)
-    }
-
-    window.rejectProposal = (proposalId: string) => {
-      handleRejectProposal(proposalId)
-    }
+    setViewProposal(proposal)
   }
 
   const handleApproveProposal = (proposalId: string) => {
-    if (window.confirm('هل أنت متأكد من الموافقة على هذا المقترح؟')) {
-      // Update proposal status to approved
-      console.log('Approving proposal:', proposalId)
-      alert('تم الموافقة على المقترح بنجاح!')
+    setProposalIdToApprove(proposalId)
+    setConfirmApproveOpen(true)
+  }
+
+  const confirmApprove = () => {
+    if (proposalIdToApprove) {
+      console.log('Approving proposal:', proposalIdToApprove)
     }
+    setConfirmApproveOpen(false)
+    setProposalIdToApprove(null)
+  }
+
+  const cancelApprove = () => {
+    setConfirmApproveOpen(false)
+    setProposalIdToApprove(null)
   }
 
   const handleRequestModification = (proposalId: string) => {
-    const modificationRequest = prompt('اكتب طلب التعديل المطلوب:')
-    if (modificationRequest) {
-      // Update proposal status to needs_revision and send notification
-      console.log('Requesting modification for proposal:', proposalId, modificationRequest)
-      alert('تم إرسال طلب التعديل بنجاح!')
-    }
+    setTargetProposalId(proposalId)
+    setModificationRequest('')
+    setModificationOpen(true)
   }
 
   const handleRejectProposal = (proposalId: string) => {
-    const rejectionReason = prompt('اكتب سبب الرفض:')
-    if (rejectionReason) {
-      // Update proposal status to rejected
-      console.log('Rejecting proposal:', proposalId, rejectionReason)
-      alert('تم رفض المقترح بنجاح!')
-    }
+    setTargetProposalId(proposalId)
+    setRejectionReason('')
+    setRejectionOpen(true)
   }
 
   const columns = [
@@ -387,7 +304,7 @@ const CommitteeProposals: React.FC = () => {
       label: 'الإجراءات',
       render: (proposal: Proposal) => (
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          <button className="p-2 text-gray-400 hover:text-gray-600" title="عرض">
+          <button onClick={() => handleViewProposal(proposal)} className="p-2 text-gray-400 hover:text-gray-600" title="عرض">
             <Eye size={16} />
           </button>
           <button className="p-2 text-gray-400 hover:text-gray-600" title="تعديل">
@@ -663,6 +580,108 @@ const CommitteeProposals: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      {/* View Proposal Modal */}
+      <Modal
+        isOpen={!!viewProposal}
+        onClose={() => setViewProposal(null)}
+        title={viewProposal ? viewProposal.title : ''}
+        size="lg"
+      >
+        {viewProposal && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewProposal.status)}</div>
+              <div><span className="font-medium">الأولوية:</span> {getPriorityText(viewProposal.priority)}</div>
+              <div><span className="font-medium">تاريخ التقديم:</span> {new Date(viewProposal.submittedDate).toLocaleDateString('ar')}</div>
+              {viewProposal.supervisor && (
+                <div><span className="font-medium">المشرف المقترح:</span> {viewProposal.supervisor}</div>
+              )}
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1 text-gray-600">{viewProposal.description}</p>
+            </div>
+            {viewProposal.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewProposal.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+            {viewProposal.comments && (
+              <div>
+                <span className="font-medium">ملاحظات:</span>
+                <p className="mt-1 text-gray-600">{viewProposal.comments}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+      <ConfirmDialog
+        isOpen={confirmApproveOpen}
+        title="تأكيد الموافقة"
+        description="هل تريد الموافقة على هذا المقترح؟"
+        onConfirm={confirmApprove}
+        onCancel={cancelApprove}
+      />
+
+      {/* Request Modification Modal */}
+      <Modal
+        isOpen={modificationOpen}
+        onClose={() => { setModificationOpen(false); setTargetProposalId(null) }}
+        title="طلب تعديل على المقترح"
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (targetProposalId && modificationRequest.trim()) {
+            console.log('Requesting modification for proposal:', targetProposalId, modificationRequest)
+          }
+          setModificationOpen(false)
+          setTargetProposalId(null)
+          setModificationRequest('')
+        }}
+      >
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">تفاصيل طلب التعديل</label>
+          <textarea
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+            placeholder="اكتب طلب التعديل المطلوب..."
+            value={modificationRequest}
+            onChange={(e) => setModificationRequest(e.target.value)}
+            required
+          />
+        </div>
+      </Modal>
+
+      {/* Rejection Reason Modal */}
+      <Modal
+        isOpen={rejectionOpen}
+        onClose={() => { setRejectionOpen(false); setTargetProposalId(null) }}
+        title="سبب الرفض"
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (targetProposalId && rejectionReason.trim()) {
+            console.log('Rejecting proposal:', targetProposalId, rejectionReason)
+          }
+          setRejectionOpen(false)
+          setTargetProposalId(null)
+          setRejectionReason('')
+        }}
+      >
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">اكتب سبب الرفض</label>
+          <textarea
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+            placeholder="سبب الرفض..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            required
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

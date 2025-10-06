@@ -8,6 +8,8 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Eye,
   CheckCircle,
@@ -43,6 +45,13 @@ const SupervisorRequests: React.FC = () => {
   const [sortBy, setSortBy] = useState('submittedDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectRequestId, setRejectRequestId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [allowReapply, setAllowReapply] = useState(true)
+  const [viewingRequest, setViewingRequest] = useState<Request | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [requestToDelete, setRequestToDelete] = useState<Request | null>(null)
 
   // Mock data
   const [requests, setRequests] = useState<Request[]>([
@@ -246,93 +255,7 @@ const SupervisorRequests: React.FC = () => {
   }
 
   const handleViewRequest = (request: Request) => {
-    // Open request details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل الطلب</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">نوع الطلب:</span>
-              <p class="text-gray-600">${request.type}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${request.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${request.priority}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ الإرسال:</span>
-              <p class="text-gray-600">${new Date(request.submittedDate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطالب:</span>
-              <p class="text-gray-600">${request.studentName}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشروع:</span>
-              <p class="text-gray-600">${request.projectTitle}</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${request.description}</p>
-          </div>
-          ${request.reason ? `
-            <div>
-              <span class="font-medium">السبب:</span>
-              <p class="text-gray-600 mt-1">${request.reason}</p>
-            </div>
-          ` : ''}
-          ${request.response ? `
-            <div>
-              <span class="font-medium">الرد:</span>
-              <p class="text-gray-600 mt-1">${request.response}</p>
-            </div>
-          ` : ''}
-          ${request.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${request.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-          ${request.status === 'pending' ? `
-            <button onclick="window.approveRequest('${request.id}'); this.closest('.fixed').remove()" 
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-              قبول
-            </button>
-            <button onclick="window.rejectRequest('${request.id}'); this.closest('.fixed').remove()" 
-                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-              رفض
-            </button>
-          ` : ''}
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add action functions to window
-    window.approveRequest = (requestId: string) => {
-      handleApproveRequest(requestId)
-    }
-
-    window.rejectRequest = (requestId: string) => {
-      const reason = prompt('سبب الرفض:')
-      if (reason) {
-        handleRejectRequest(requestId, reason)
-      }
-    }
+    setViewingRequest(request)
   }
 
   const handleFilterClear = () => {
@@ -640,29 +563,10 @@ const SupervisorRequests: React.FC = () => {
                           <div className="relative">
                             <button
                               onClick={() => {
-                                // UC-20: Check for policy conflict rejection option
-                                const rejectionReason = window.prompt(
-                                  'سبب الرفض:\n' +
-                                  '1. عدم توفر وقت كافي\n' +
-                                  '2. عدم التخصص في المجال\n' +
-                                  '3. تعارض مع سياسات الجامعة\n' +
-                                  '4. أسباب أخرى\n\n' +
-                                  'أدخل رقم السبب أو اكتب السبب مباشرة:'
-                                )
-
-                                if (rejectionReason) {
-                                  const isPolicyConflict = rejectionReason.includes('3') ||
-                                    rejectionReason.toLowerCase().includes('سياسات الجامعة')
-
-                                  if (isPolicyConflict) {
-                                    alert('تم رفض الطلب بسبب تعارض مع سياسات الجامعة')
-                                  } else {
-                                    const allowReapplication = window.confirm('هل تريد السماح للطالب بالبحث عن مشرف آخر؟')
-                                    alert(`تم رفض الطلب. السبب: ${rejectionReason}`)
-                                  }
-
-                                  handleRejectRequest(request.id, !isPolicyConflict)
-                                }
+                                setRejectRequestId(request.id)
+                                setRejectReason('')
+                                setAllowReapply(true)
+                                setRejectOpen(true)
                               }}
                               className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors flex items-center"
                             >
@@ -697,6 +601,90 @@ const SupervisorRequests: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <Modal
+        isOpen={rejectOpen}
+        onClose={() => { setRejectOpen(false); setRejectRequestId(null) }}
+        title="رفض الطلب"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (rejectRequestId) {
+            handleRejectRequest(rejectRequestId, allowReapply)
+          }
+          setRejectOpen(false)
+          setRejectRequestId(null)
+        }}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">سبب الرفض</label>
+            <textarea
+              rows={4}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              placeholder="اكتب سبب الرفض..."
+            />
+          </div>
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={allowReapply} onChange={(e) => setAllowReapply(e.target.checked)} className="rounded border-gray-300 text-gpms-dark focus:ring-gpms-light" />
+            السماح للطالب بالبحث عن مشرف آخر
+          </label>
+        </div>
+      </Modal>
+
+      {/* View Request Modal */}
+      <Modal
+        isOpen={!!viewingRequest}
+        onClose={() => setViewingRequest(null)}
+        title={viewingRequest ? `تفاصيل الطلب - ${viewingRequest.project}` : 'تفاصيل الطلب'}
+        size="lg"
+      >
+        {viewingRequest && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium">نوع الطلب:</span>
+                <p className="text-gray-700 mt-1">{getTypeText(viewingRequest.type)}</p>
+              </div>
+              <div>
+                <span className="font-medium">الحالة:</span>
+                <p className="text-gray-700 mt-1">{getStatusText(viewingRequest.status)}</p>
+              </div>
+              <div>
+                <span className="font-medium">الأولوية:</span>
+                <p className="text-gray-700 mt-1">{viewingRequest.priority === 'high' ? 'عالي' : viewingRequest.priority === 'medium' ? 'متوسط' : 'منخفض'}</p>
+              </div>
+              <div>
+                <span className="font-medium">تاريخ الإرسال:</span>
+                <p className="text-gray-700 mt-1">{new Date(viewingRequest.submittedDate).toLocaleDateString('ar')}</p>
+              </div>
+              <div>
+                <span className="font-medium">الطالب:</span>
+                <p className="text-gray-700 mt-1">{viewingRequest.student} ({viewingRequest.studentId})</p>
+              </div>
+              <div>
+                <span className="font-medium">المشروع:</span>
+                <p className="text-gray-700 mt-1">{viewingRequest.project}</p>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="text-gray-700 mt-1">{viewingRequest.description}</p>
+            </div>
+            {viewingRequest.attachments.length > 0 && (
+              <div>
+                <span className="font-medium">المرفقات:</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {viewingRequest.attachments.map((a, i) => (
+                    <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded border">{a}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

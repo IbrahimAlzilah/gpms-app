@@ -12,14 +12,14 @@ function Divider({ title, color }: DividerProps) {
     };
 
     return (
-        <div className={`divider-root relative ${title ? "my-6" : "my-4"}`}>
+        <div className={`divider-root relative ${title ? "my-6" : "my-0"}`}>
             <span
                 className={`block text-xs font-medium uppercase tracking-wider text-gray-500 ${title ? "mb-2" : ""}`}
             >
                 {title}
             </span>
             <hr
-                className="border-t border-gray-200"
+                className="border-t border-gray-100"
                 style={color ? { borderColor: color } : {}}
             />
         </div>

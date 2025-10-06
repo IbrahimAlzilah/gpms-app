@@ -9,7 +9,7 @@ import { Table } from '../ui/Table'
 import { SearchBar, FilterDropdown, FilterBar } from '../ui/Filter'
 import GridView, { ProjectCard } from '../ui/GridView'
 import ViewToggle from '../ui/ViewToggle'
-import { 
+import {
   Plus,
   Search,
   Filter,
@@ -25,6 +25,7 @@ import {
   Clock
 } from 'lucide-react'
 import ProposalFormModal from '../forms/ProposalFormModal'
+import ConfirmDialog from '../ui/ConfirmDialog'
 
 interface Project {
   id: string
@@ -54,6 +55,8 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [projectIdToDelete, setProjectIdToDelete] = useState<string | null>(null)
 
   // Mock data
   const [projects, setProjects] = useState<Project[]>([
@@ -187,20 +190,20 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
 
   const filteredProjects = projects
     .filter(project => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
         project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      
+
       const matchesStatus = statusFilter === 'all' || project.status === statusFilter
       const matchesPriority = priorityFilter === 'all' || project.priority === priorityFilter
-      
+
       return matchesSearch && matchesStatus && matchesPriority
     })
     .sort((a, b) => {
       let comparison = 0
-      
+
       switch (sortBy) {
         case 'title':
           comparison = a.title.localeCompare(b.title, 'ar')
@@ -220,7 +223,7 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
         default:
           comparison = 0
       }
-      
+
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
@@ -235,9 +238,21 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
   }
 
   const handleDeleteProject = (projectId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المشروع؟')) {
-      setProjects(prev => prev.filter(p => p.id !== projectId))
+    setProjectIdToDelete(projectId)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (projectIdToDelete) {
+      setProjects(prev => prev.filter(p => p.id !== projectIdToDelete))
     }
+    setConfirmDeleteOpen(false)
+    setProjectIdToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setProjectIdToDelete(null)
   }
 
   const handleViewProject = (project: Project) => {
@@ -248,8 +263,8 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
   const handleModalSubmit = (data: any) => {
     if (editingProject) {
       // Update existing project
-      setProjects(prev => prev.map(p => 
-        p.id === editingProject.id 
+      setProjects(prev => prev.map(p =>
+        p.id === editingProject.id
           ? { ...p, ...data, updatedAt: new Date().toISOString().split('T')[0] }
           : p
       ))
@@ -330,7 +345,7 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
             <span>{project.progress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
+            <div
               className="bg-gpms-light h-2 rounded-full transition-all duration-300"
               style={{ width: `${project.progress}%` }}
             />
@@ -389,14 +404,14 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
               <BookOpen className="w-6 h-6 text-gpms-dark" />
               <h2 className="text-xl font-bold text-gray-900">إدارة المشاريع</h2>
             </div>
-            
+
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
               {/* View Mode Toggle */}
               <ViewToggle
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
               />
-              
+
               <Button
                 onClick={handleAddProject}
                 className="bg-gpms-dark text-white hover:bg-gpms-light"
@@ -425,14 +440,14 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
                 onChange={setStatusFilter}
                 options={statusOptions}
               />
-              
+
               <FilterDropdown
                 label="الأولوية"
                 value={priorityFilter}
                 onChange={setPriorityFilter}
                 options={priorityOptions}
               />
-              
+
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -444,7 +459,7 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
                 <option value="progress">التقدم</option>
                 <option value="createdAt">تاريخ الإنشاء</option>
               </select>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -496,6 +511,14 @@ const ProjectsTable: React.FC<ProjectsTableProps> = ({ className }) => {
         }}
         onSubmit={handleModalSubmit}
         editData={editingProject}
+      />
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذا المشروع؟ لا يمكن التراجع عن هذه العملية."
+        variant="destructive"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
       />
     </div>
   )

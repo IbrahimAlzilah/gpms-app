@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
 import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
-import { SearchBar } from '../../components/ui/Filter'
+// Removed unused SearchBar import
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
@@ -13,7 +13,6 @@ import GroupManagementModal from '../../components/forms/GroupManagementModal'
 import Modal from '../../components/ui/Modal'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus,
   Eye,
   Edit,
   Trash2,
@@ -25,6 +24,7 @@ import {
   SlidersHorizontal,
   Users
 } from 'lucide-react'
+import { getStudentProjects } from '@/services/projects.service'
 
 interface Project {
   id: string
@@ -66,117 +66,22 @@ const StudentProjects: React.FC = () => {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  // Mock data
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: '1',
-      title: 'تطبيق إدارة المكتبة الذكية',
-      description: 'تطبيق ويب لإدارة المكتبات باستخدام تقنيات حديثة',
-      status: 'in_progress',
-      priority: 'high',
-      supervisor: 'د. أحمد محمد',
-      startDate: '2024-01-01',
-      endDate: '2024-06-01',
-      progress: 65,
-      teamMembers: ['أحمد علي', 'فاطمة حسن', 'محمد خالد'],
-      tags: ['تطوير ويب', 'ذكاء اصطناعي', 'قواعد البيانات'],
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-22',
-      supervisorNotes: 'التقدم ممتاز في المرحلة الأولى. يرجى التركيز على تحسين واجهة المستخدم وإضافة المزيد من الاختبارات.',
-      lastMeetingDate: '2024-01-20',
-      nextMeetingDate: '2024-01-27',
-      milestones: [
-        {
-          id: '1',
-          title: 'تحليل المتطلبات',
-          dueDate: '2024-01-15',
-          completed: true,
-          progress: 100
-        },
-        {
-          id: '2',
-          title: 'تصميم قاعدة البيانات',
-          dueDate: '2024-01-30',
-          completed: true,
-          progress: 100
-        },
-        {
-          id: '3',
-          title: 'تطوير الواجهة الأمامية',
-          dueDate: '2024-02-15',
-          completed: false,
-          progress: 70
-        },
-        {
-          id: '4',
-          title: 'تطوير الواجهة الخلفية',
-          dueDate: '2024-03-01',
-          completed: false,
-          progress: 40
-        }
-      ]
-    },
-    {
-      id: '2',
-      title: 'نظام إدارة المستودعات',
-      description: 'نظام لإدارة المخزون والمستودعات',
-      status: 'completed',
-      priority: 'medium',
-      supervisor: 'د. سارة أحمد',
-      startDate: '2023-09-01',
-      endDate: '2023-12-15',
-      progress: 100,
-      teamMembers: ['علي محمود', 'نور الدين'],
-      tags: ['إدارة المخزون', 'قواعد البيانات'],
-      createdAt: '2023-09-01',
-      updatedAt: '2023-12-15'
-    },
-    {
-      id: '3',
-      title: 'منصة التعليم الإلكتروني',
-      description: 'منصة تفاعلية للتعليم عن بعد',
-      status: 'pending',
-      priority: 'low',
-      supervisor: 'د. خالد محمود',
-      startDate: '2024-02-01',
-      endDate: '2024-07-01',
-      progress: 0,
-      teamMembers: ['سارة محمد', 'يوسف أحمد'],
-      tags: ['تعليم إلكتروني', 'تفاعل', 'واجهة مستخدم'],
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-20'
-    },
-    {
-      id: '4',
-      title: 'نظام إدارة المستشفى',
-      description: 'نظام شامل لإدارة العمليات الطبية والمواعيد',
-      status: 'approved',
-      priority: 'high',
-      supervisor: 'د. فاطمة علي',
-      startDate: '2024-01-10',
-      endDate: '2024-05-10',
-      progress: 30,
-      teamMembers: ['محمد أحمد', 'نورا حسن'],
-      tags: ['إدارة المستشفى', 'قواعد البيانات', 'واجهة مستخدم'],
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-25'
-    },
-    {
-      id: '5',
-      title: 'تطبيق التجارة الإلكترونية',
-      description: 'منصة تجارة إلكترونية متكاملة مع نظام دفع آمن',
-      status: 'rejected',
-      priority: 'medium',
-      supervisor: 'د. سعد محمود',
-      startDate: '2023-12-01',
-      endDate: '2024-03-01',
-      progress: 0,
-      teamMembers: ['أحمد سعد', 'مريم علي'],
-      tags: ['التجارة الإلكترونية', 'الدفع الإلكتروني', 'تطوير ويب'],
-      createdAt: '2023-12-01',
-      updatedAt: '2024-01-18'
-    }
-  ])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+
+  useEffect(() => {
+    let isMounted = true
+    setIsLoading(true)
+    getStudentProjects().then((data) => {
+      if (!isMounted) return
+      setProjects(data as unknown as Project[])
+      setIsLoading(false)
+    }).catch(() => {
+      if (!isMounted) return
+      setIsLoading(false)
+    })
+    return () => { isMounted = false }
+  }, [])
 
   const statusOptions = [
     { value: 'all', label: 'جميع الحالات' },
@@ -271,10 +176,10 @@ const StudentProjects: React.FC = () => {
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
-  const handleAddProject = () => {
+  const handleAddProject = useCallback(() => {
     setEditingProject(null)
     setIsModalOpen(true)
-  }
+  }, [])
 
   const handleGroupManagement = (data: any) => {
     // Handle group management logic here

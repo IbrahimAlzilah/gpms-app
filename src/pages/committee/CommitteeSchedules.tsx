@@ -7,6 +7,8 @@ import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Modal from '../../components/ui/Modal'
 import DataTable from '../../components/ui/DataTable'
 import {
   Eye,
@@ -49,6 +51,8 @@ const CommitteeSchedules: React.FC = () => {
   const [sortBy, setSortBy] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [scheduleIdToDelete, setScheduleIdToDelete] = useState<string | null>(null)
 
   // Mock data
   const [schedules] = useState<Schedule[]>([
@@ -246,181 +250,51 @@ const CommitteeSchedules: React.FC = () => {
     setSortOrder('asc')
   }
 
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [addForm, setAddForm] = useState({
+    title: '', type: 'presentation', description: '', date: '', time: '', location: '', priority: 'medium', notes: ''
+  })
+
   const handleAddSchedule = () => {
-    // Open add schedule modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">إضافة موعد جديد</h3>
-        <form id="addScheduleForm" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">عنوان الموعد</label>
-              <input type="text" name="title" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">نوع الموعد</label>
-              <select name="type" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">اختر النوع</option>
-                <option value="presentation">عرض تقديمي</option>
-                <option value="defense">مناقشة</option>
-                <option value="meeting">اجتماع</option>
-                <option value="workshop">ورشة عمل</option>
-                <option value="exam">امتحان</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
-            <textarea name="description" rows="3" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
-              <input type="date" name="date" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الوقت</label>
-              <input type="time" name="time" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">المكان</label>
-            <input type="text" name="location" required 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
-            <select name="priority" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">اختر الأولوية</option>
-              <option value="low">منخفض</option>
-              <option value="medium">متوسط</option>
-              <option value="high">عالي</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-            <textarea name="notes" rows="2" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitSchedule(); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            إضافة الموعد
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitSchedule = () => {
-      const form = document.getElementById('addScheduleForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const scheduleData = {
-        title: formData.get('title'),
-        type: formData.get('type'),
-        description: formData.get('description'),
-        date: formData.get('date'),
-        time: formData.get('time'),
-        location: formData.get('location'),
-        priority: formData.get('priority'),
-        notes: formData.get('notes')
-      }
-
-      // Simulate adding schedule
-      console.log('Adding new schedule:', scheduleData)
-      alert('تم إضافة الموعد بنجاح!')
-    }
+    setAddForm({ title: '', type: 'presentation', description: '', date: '', time: '', location: '', priority: 'medium', notes: '' })
+    setIsAddOpen(true)
   }
 
+  const [viewSchedule, setViewSchedule] = useState<Schedule | null>(null)
   const handleViewSchedule = (schedule: Schedule) => {
-    // Open schedule details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل الموعد</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">عنوان الموعد:</span>
-              <p class="text-gray-600">${schedule.title}</p>
-            </div>
-            <div>
-              <span class="font-medium">النوع:</span>
-              <p class="text-gray-600">${getTypeText(schedule.type)}</p>
-            </div>
-            <div>
-              <span class="font-medium">التاريخ:</span>
-              <p class="text-gray-600">${new Date(schedule.date).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الوقت:</span>
-              <p class="text-gray-600">${schedule.startTime} - ${schedule.endTime}</p>
-            </div>
-            <div>
-              <span class="font-medium">المكان:</span>
-              <p class="text-gray-600">${schedule.location}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${getStatusText(schedule.status)}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${getPriorityText(schedule.priority)}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشاركون:</span>
-              <p class="text-gray-600">${schedule.participants.length} مشارك</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${schedule.description}</p>
-          </div>
-          ${schedule.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${schedule.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewSchedule(schedule)
   }
 
   const handleEditSchedule = (schedule: Schedule) => {
-    // Open edit schedule modal (similar to add but with pre-filled data)
-    console.log('Edit schedule:', schedule)
-    alert('وظيفة التعديل قيد التطوير')
+    setAddForm({
+      title: schedule.title,
+      type: schedule.type,
+      description: schedule.description,
+      date: schedule.date,
+      time: schedule.startTime,
+      location: schedule.location,
+      priority: schedule.priority,
+      notes: schedule.notes || ''
+    })
+    setIsAddOpen(true)
   }
 
   const handleDeleteSchedule = (scheduleId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
-      console.log('Delete schedule:', scheduleId)
-      alert('تم حذف الموعد بنجاح!')
+    setScheduleIdToDelete(scheduleId)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (scheduleIdToDelete) {
+      console.log('Delete schedule:', scheduleIdToDelete)
     }
+    setConfirmDeleteOpen(false)
+    setScheduleIdToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setScheduleIdToDelete(null)
   }
 
   const columns = [
@@ -791,6 +665,141 @@ const CommitteeSchedules: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      {/* Add/Edit Schedule Modal */}
+      <Modal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title={addForm.title ? 'تعديل الموعد' : 'إضافة موعد جديد'}
+        onSubmit={(e) => {
+          e?.preventDefault()
+          console.log('Submit schedule:', addForm)
+          setIsAddOpen(false)
+        }}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">عنوان الموعد</label>
+              <input
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.title}
+                onChange={(e) => setAddForm(prev => ({ ...prev, title: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">نوع الموعد</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.type}
+                onChange={(e) => setAddForm(prev => ({ ...prev, type: e.target.value as any }))}
+              >
+                <option value="presentation">عرض تقديمي</option>
+                <option value="defense">مناقشة</option>
+                <option value="meeting">اجتماع</option>
+                <option value="workshop">ورشة عمل</option>
+                <option value="exam">امتحان</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              value={addForm.description}
+              onChange={(e) => setAddForm(prev => ({ ...prev, description: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">التاريخ</label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.date}
+                onChange={(e) => setAddForm(prev => ({ ...prev, date: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الوقت</label>
+              <input
+                type="time"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.time}
+                onChange={(e) => setAddForm(prev => ({ ...prev, time: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">المكان</label>
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              value={addForm.location}
+              onChange={(e) => setAddForm(prev => ({ ...prev, location: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.priority}
+                onChange={(e) => setAddForm(prev => ({ ...prev, priority: e.target.value }))}
+              >
+                <option value="low">منخفض</option>
+                <option value="medium">متوسط</option>
+                <option value="high">عالي</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+              <input
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={addForm.notes}
+                onChange={(e) => setAddForm(prev => ({ ...prev, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* View Schedule Modal */}
+      <Modal
+        isOpen={!!viewSchedule}
+        onClose={() => setViewSchedule(null)}
+        title={viewSchedule ? viewSchedule.title : ''}
+        size="lg"
+      >
+        {viewSchedule && (
+          <div className="space-y-3 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">النوع:</span> {getTypeText(viewSchedule.type)}</div>
+              <div><span className="font-medium">التاريخ:</span> {new Date(viewSchedule.date).toLocaleDateString('ar')}</div>
+              <div><span className="font-medium">الوقت:</span> {viewSchedule.startTime} - {viewSchedule.endTime}</div>
+              <div><span className="font-medium">المكان:</span> {viewSchedule.location}</div>
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewSchedule.status)}</div>
+              <div><span className="font-medium">الأولوية:</span> {getPriorityText(viewSchedule.priority)}</div>
+            </div>
+            {viewSchedule.description && (
+              <div>
+                <span className="font-medium">الوصف:</span>
+                <p className="mt-1 text-gray-600">{viewSchedule.description}</p>
+              </div>
+            )}
+            {viewSchedule.notes && (
+              <div>
+                <span className="font-medium">ملاحظات:</span>
+                <p className="mt-1 text-gray-600">{viewSchedule.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

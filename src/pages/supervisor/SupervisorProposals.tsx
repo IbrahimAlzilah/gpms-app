@@ -9,6 +9,7 @@ import DataTable from '../../components/ui/DataTable'
 import UnifiedProposalForm from '../../components/forms/UnifiedProposalForm'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Plus,
   Eye,
@@ -45,6 +46,8 @@ const StudentProposals: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [proposalIdToDelete, setProposalIdToDelete] = useState<string | null>(null)
 
   // Mock data
   const [proposals, setProposals] = useState<Proposal[]>([
@@ -182,9 +185,21 @@ const StudentProposals: React.FC = () => {
   }
 
   const handleDeleteProposal = (proposalId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المقترح؟')) {
-      setProposals(prev => prev.filter(p => p.id !== proposalId))
+    setProposalIdToDelete(proposalId)
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (proposalIdToDelete) {
+      setProposals(prev => prev.filter(p => p.id !== proposalIdToDelete))
     }
+    setConfirmDeleteOpen(false)
+    setProposalIdToDelete(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setProposalIdToDelete(null)
   }
 
   const handleViewProposal = (proposal: Proposal) => {
@@ -575,6 +590,14 @@ const StudentProposals: React.FC = () => {
         editData={editingProposal}
         userRole="supervisor"
         mode={editingProposal ? 'edit' : 'create'}
+      />
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذا المقترح؟ لا يمكن التراجع عن هذه العملية."
+        variant="destructive"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
       />
     </div>
   )

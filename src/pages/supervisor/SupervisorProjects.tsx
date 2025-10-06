@@ -8,6 +8,7 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
 import {
   Eye,
   Edit,
@@ -45,7 +46,7 @@ const SupervisorProjects: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
 
   // Mock data - مشاريع يشرف عليها المشرف
-  const [projects] = useState<Project[]>([
+  const [projects, setProjects] = useState<Project[]>([
     {
       id: '1',
       title: 'نظام إدارة المكتبة الذكية',
@@ -216,204 +217,20 @@ const SupervisorProjects: React.FC = () => {
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
+  const [viewingProject, setViewingProject] = useState<Project | null>(null)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [addNoteFor, setAddNoteFor] = useState<Project | null>(null)
+
   const handleViewProject = (project: Project) => {
-    // Open project details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل المشروع</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">اسم المشروع:</span>
-              <p class="text-gray-600">${project.title}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${project.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${project.priority}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ آخر تحديث:</span>
-              <p class="text-gray-600">${new Date(project.lastUpdate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطلاب:</span>
-              <p class="text-gray-600">${project.students.join(', ')}</p>
-            </div>
-            <div>
-              <span class="font-medium">التقدم:</span>
-              <p class="text-gray-600">${project.progress}%</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${project.description}</p>
-          </div>
-          ${project.technologies && project.technologies.length > 0 ? `
-            <div>
-              <span class="font-medium">التقنيات المستخدمة:</span>
-              <div class="flex flex-wrap gap-2 mt-1">
-                ${project.technologies.map(tech =>
-      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tech}</span>`
-    ).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewingProject(project)
   }
 
   const handleEditProject = (project: Project) => {
-    // Open edit project modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تعديل المشروع</h3>
-        <form id="editProjectForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">عنوان المشروع</label>
-            <input type="text" name="title" value="${project.title}" required 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
-            <textarea name="description" rows="3" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${project.description}</textarea>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
-              <select name="status" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="planning" ${project.status === 'planning' ? 'selected' : ''}>تخطيط</option>
-                <option value="development" ${project.status === 'development' ? 'selected' : ''}>تطوير</option>
-                <option value="testing" ${project.status === 'testing' ? 'selected' : ''}>اختبار</option>
-                <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>مكتمل</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
-              <select name="priority" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="low" ${project.priority === 'low' ? 'selected' : ''}>منخفض</option>
-                <option value="medium" ${project.priority === 'medium' ? 'selected' : ''}>متوسط</option>
-                <option value="high" ${project.priority === 'high' ? 'selected' : ''}>عالي</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-            <textarea name="notes" rows="2" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${project.notes || ''}</textarea>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitProjectEdit('${project.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            حفظ التعديلات
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitProjectEdit = (projectId: string) => {
-      const form = document.getElementById('editProjectForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const projectData = {
-        title: formData.get('title'),
-        description: formData.get('description'),
-        status: formData.get('status'),
-        priority: formData.get('priority'),
-        notes: formData.get('notes')
-      }
-
-      console.log('Updating project:', projectId, projectData)
-      alert('تم تحديث المشروع بنجاح!')
-    }
+    setEditingProject(project)
   }
 
   const handleAddNote = (project: Project) => {
-    // Open add note modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-        <h3 class="text-lg font-semibold mb-4">إضافة ملاحظة للمشروع: ${project.title}</h3>
-        <form id="addNoteForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">نوع الملاحظة</label>
-            <select name="noteType" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">اختر النوع</option>
-              <option value="feedback">ملاحظة</option>
-              <option value="suggestion">اقتراح</option>
-              <option value="requirement">متطلب</option>
-              <option value="issue">مشكلة</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الملاحظة</label>
-            <textarea name="note" rows="4" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
-            <select name="priority" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">اختر الأولوية</option>
-              <option value="low">منخفض</option>
-              <option value="medium">متوسط</option>
-              <option value="high">عالي</option>
-            </select>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitNote('${project.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-            إضافة الملاحظة
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitNote = (projectId: string) => {
-      const form = document.getElementById('addNoteForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const noteData = {
-        noteType: formData.get('noteType'),
-        note: formData.get('note'),
-        priority: formData.get('priority')
-      }
-
-      console.log('Adding note to project:', projectId, noteData)
-      alert('تم إضافة الملاحظة بنجاح!')
-    }
+    setAddNoteFor(project)
   }
 
   const handleFilterClear = () => {
@@ -785,6 +602,153 @@ const SupervisorProjects: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      {/* View Project Modal */}
+      <Modal
+        isOpen={!!viewingProject}
+        onClose={() => setViewingProject(null)}
+        title={viewingProject ? `تفاصيل المشروع - ${viewingProject.title}` : 'تفاصيل المشروع'}
+        size="lg"
+      >
+        {viewingProject && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium">الحالة:</span>
+                <p className="mt-1">{getStatusText(viewingProject.status)}</p>
+              </div>
+              <div>
+                <span className="font-medium">الأولوية:</span>
+                <p className="mt-1">{getPriorityText(viewingProject.priority)}</p>
+              </div>
+              <div>
+                <span className="font-medium">آخر تحديث:</span>
+                <p className="mt-1">{new Date(viewingProject.lastUpdate).toLocaleDateString('ar')}</p>
+              </div>
+              <div>
+                <span className="font-medium">الفترة:</span>
+                <p className="mt-1">{new Date(viewingProject.startDate).toLocaleDateString('ar')} - {new Date(viewingProject.endDate).toLocaleDateString('ar')}</p>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium">الطلاب:</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {viewingProject.students.map((s, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{s}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1">{viewingProject.description}</p>
+            </div>
+            {typeof viewingProject.grade === 'number' && (
+              <div>
+                <span className="font-medium">الدرجة:</span>
+                <p className="mt-1">{viewingProject.grade}/100</p>
+              </div>
+            )}
+            {viewingProject.notes && (
+              <div>
+                <span className="font-medium">ملاحظات:</span>
+                <p className="mt-1">{viewingProject.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Project Modal */}
+      <Modal
+        isOpen={!!editingProject}
+        onClose={() => setEditingProject(null)}
+        title={editingProject ? `تعديل المشروع - ${editingProject.title}` : 'تعديل المشروع'}
+        size="lg"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (!editingProject) return
+          const form = e?.target as HTMLFormElement
+          const formData = new FormData(form)
+          const updated = {
+            title: String(formData.get('title') || editingProject.title),
+            description: String(formData.get('description') || editingProject.description),
+            status: String(formData.get('status') || editingProject.status) as Project['status'],
+            priority: String(formData.get('priority') || editingProject.priority) as Project['priority'],
+            notes: String(formData.get('notes') || editingProject.notes)
+          }
+          setProjects(prev => prev.map(p => p.id === editingProject.id ? { ...p, ...updated, lastUpdate: new Date().toISOString().slice(0, 10) } : p))
+          setEditingProject(null)
+        }}
+      >
+        {editingProject && (
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">عنوان المشروع</label>
+              <input name="title" defaultValue={editingProject.title} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+              <textarea name="description" defaultValue={editingProject.description} rows={3} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1">الحالة</label>
+                <select name="status" defaultValue={editingProject.status} className="w-full border rounded px-3 py-2">
+                  {statusOptions.filter(o => o.value !== 'all').map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">الأولوية</label>
+                <select name="priority" defaultValue={editingProject.priority} className="w-full border rounded px-3 py-2">
+                  {priorityOptions.filter(o => o.value !== 'all').map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">ملاحظات</label>
+              <textarea name="notes" defaultValue={editingProject.notes} rows={2} className="w-full border rounded px-3 py-2" />
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Add Note Modal */}
+      <Modal
+        isOpen={!!addNoteFor}
+        onClose={() => setAddNoteFor(null)}
+        title={addNoteFor ? `إضافة ملاحظة - ${addNoteFor.title}` : 'إضافة ملاحظة'}
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (!addNoteFor) return
+          const form = e?.target as HTMLFormElement
+          const formData = new FormData(form)
+          const note = String(formData.get('note') || '')
+          const priority = String(formData.get('priority') || 'low') as Project['priority']
+          setProjects(prev => prev.map(p => p.id === addNoteFor.id ? { ...p, notes: (p.notes ? p.notes + '\n' : '') + `(${getPriorityText(priority)}): ${note}` } : p))
+          setAddNoteFor(null)
+        }}
+      >
+        {addNoteFor && (
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm mb-1">الملاحظة</label>
+              <textarea name="note" rows={4} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">الأولوية</label>
+              <select name="priority" defaultValue={addNoteFor.priority} className="w-full border rounded px-3 py-2">
+                {priorityOptions.filter(o => o.value !== 'all').map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

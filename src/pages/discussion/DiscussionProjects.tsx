@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
 import {
   Eye,
   Edit,
@@ -231,158 +232,16 @@ const DiscussionProjects: React.FC = () => {
     setSortOrder('asc')
   }
 
+  const [viewingProject, setViewingProject] = useState<Project | null>(null)
   const handleViewProject = (project: Project) => {
-    // Open project details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل المشروع</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">اسم المشروع:</span>
-              <p class="text-gray-600">${project.title}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${getStatusText(project.status)}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${getPriorityText(project.priority)}</p>
-            </div>
-            <div>
-              <span class="font-medium">التقدم:</span>
-              <p class="text-gray-600">${project.progress}%</p>
-            </div>
-            <div>
-              <span class="font-medium">المشرف:</span>
-              <p class="text-gray-600">${project.supervisor}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطلاب:</span>
-              <p class="text-gray-600">${project.students.join(', ')}</p>
-            </div>
-            <div>
-              <span class="font-medium">القسم:</span>
-              <p class="text-gray-600">${project.department}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ التسليم:</span>
-              <p class="text-gray-600">${new Date(project.submissionDate).toLocaleDateString('ar')}</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${project.description}</p>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <span class="font-medium">درجة التقرير:</span>
-              <p class="text-gray-600">${project.reportGrade || 'لم يتم التقييم بعد'}</p>
-            </div>
-            <div>
-              <span class="font-medium">درجة العرض:</span>
-              <p class="text-gray-600">${project.presentationGrade || 'لم يتم التقييم بعد'}</p>
-            </div>
-            <div>
-              <span class="font-medium">الدرجة النهائية:</span>
-              <p class="text-gray-600 font-bold">${project.finalGrade || 'لم يتم التقييم بعد'}</p>
-            </div>
-          </div>
-          ${project.tags && project.tags.length > 0 ? `
-            <div>
-              <span class="font-medium">العلامات:</span>
-              <div class="flex flex-wrap gap-2 mt-1">
-                ${project.tags.map(tag =>
-      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tag}</span>`
-    ).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewingProject(project)
   }
 
+  const [evaluatingProject, setEvaluatingProject] = useState<Project | null>(null)
+  const [evalForm, setEvalForm] = useState({ reportGrade: 0, presentationGrade: 0, comments: '', recommendations: '' })
   const handleEvaluateProject = (project: Project) => {
-    // Open evaluation modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تقييم المشروع: ${project.title}</h3>
-        <div class="space-y-4">
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-medium text-blue-900 mb-2">معلومات المشروع</h4>
-            <div class="text-sm text-blue-800 space-y-1">
-              <p><strong>الطلاب:</strong> ${project.students.join(', ')}</p>
-              <p><strong>المشرف:</strong> ${project.supervisor}</p>
-              <p><strong>القسم:</strong> ${project.department}</p>
-            </div>
-          </div>
-          
-          <form id="evaluateProjectForm" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">درجة التقرير (0-50)</label>
-                <input type="number" name="reportGrade" min="0" max="50" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">درجة العرض (0-50)</label>
-                <input type="number" name="presentationGrade" min="0" max="50" 
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">التعليقات</label>
-              <textarea name="comments" rows="4" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
-              <textarea name="recommendations" rows="3" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-            </div>
-          </form>
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitProjectEvaluation('${project.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-            إرسال التقييم
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitProjectEvaluation = (projectId: string) => {
-      const form = document.getElementById('evaluateProjectForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const evaluationData = {
-        reportGrade: formData.get('reportGrade'),
-        presentationGrade: formData.get('presentationGrade'),
-        comments: formData.get('comments'),
-        recommendations: formData.get('recommendations')
-      }
-
-      console.log('Submitting project evaluation:', projectId, evaluationData)
-      alert('تم إرسال التقييم بنجاح!')
-    }
+    setEvaluatingProject(project)
+    setEvalForm({ reportGrade: 0, presentationGrade: 0, comments: '', recommendations: '' })
   }
 
   const columns = [
@@ -741,6 +600,94 @@ const DiscussionProjects: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* View Project Modal */}
+      <Modal
+        isOpen={!!viewingProject}
+        onClose={() => setViewingProject(null)}
+        title={viewingProject ? `تفاصيل المشروع - ${viewingProject.title}` : 'تفاصيل المشروع'}
+        size="lg"
+      >
+        {viewingProject && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewingProject.status)}</div>
+              <div><span className="font-medium">الأولوية:</span> {getPriorityText(viewingProject.priority)}</div>
+              {typeof (viewingProject as any).progress === 'number' && (
+                <div><span className="font-medium">التقدم:</span> {(viewingProject as any).progress}%</div>
+              )}
+              <div><span className="font-medium">المشرف:</span> {viewingProject.supervisor}</div>
+              <div><span className="font-medium">القسم:</span> {viewingProject.department}</div>
+              {viewingProject.defenseDate && (
+                <div><span className="font-medium">موعد المناقشة:</span> {new Date(viewingProject.defenseDate).toLocaleDateString('ar')}{viewingProject.defenseTime ? ` - ${viewingProject.defenseTime}` : ''}</div>
+              )}
+              {viewingProject.finalGrade && (
+                <div><span className="font-medium">النهائية:</span> {viewingProject.finalGrade}/100</div>
+              )}
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1 text-gray-600">{viewingProject.description}</p>
+            </div>
+            {viewingProject.students?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewingProject.students.map((s, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{s}</span>
+                ))}
+              </div>
+            ) : null}
+            {viewingProject.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewingProject.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Modal>
+
+      {/* Evaluate Project Modal */}
+      <Modal
+        isOpen={!!evaluatingProject}
+        onClose={() => setEvaluatingProject(null)}
+        title={evaluatingProject ? `تقييم المشروع - ${evaluatingProject.title}` : 'تقييم المشروع'}
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (!evaluatingProject) return
+          console.log('Submitting project evaluation:', evaluatingProject.id, evalForm)
+          setEvaluatingProject(null)
+        }}
+      >
+        {evaluatingProject && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-3 rounded text-sm">
+              <div><strong>الطلاب:</strong> {evaluatingProject.students.join(', ')}</div>
+              <div><strong>المشرف:</strong> {evaluatingProject.supervisor}</div>
+              <div><strong>القسم:</strong> {evaluatingProject.department}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1">درجة التقرير (0-50)</label>
+                <input type="number" min={0} max={50} className="w-full border rounded px-3 py-2" value={evalForm.reportGrade} onChange={(e) => setEvalForm(prev => ({ ...prev, reportGrade: Number(e.target.value) }))} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">درجة العرض (0-50)</label>
+                <input type="number" min={0} max={50} className="w-full border rounded px-3 py-2" value={evalForm.presentationGrade} onChange={(e) => setEvalForm(prev => ({ ...prev, presentationGrade: Number(e.target.value) }))} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">التعليقات</label>
+              <textarea rows={4} className="w-full border rounded px-3 py-2" value={evalForm.comments} onChange={(e) => setEvalForm(prev => ({ ...prev, comments: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">التوصيات</label>
+              <textarea rows={3} className="w-full border rounded px-3 py-2" value={evalForm.recommendations} onChange={(e) => setEvalForm(prev => ({ ...prev, recommendations: e.target.value }))} />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

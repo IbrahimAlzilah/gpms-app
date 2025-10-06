@@ -6,7 +6,9 @@ import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
 import Input from '../../components/ui/Input'
 import { Form, FormGroup, FormLabel, FormError } from '../../components/ui/Form'
-import { 
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import {
   Users,
   UserPlus,
   Calendar,
@@ -218,19 +220,19 @@ const CommitteeDistribution: React.FC = () => {
 
       if (editingCommittee) {
         // Update existing committee
-        setCommittees(prev => prev.map(c => 
-          c.id === editingCommittee.id 
-            ? { 
-                ...c, 
-                name: formData.name,
-                members: selectedMembersData,
-                projectId: formData.projectId,
-                projectTitle: selectedProject?.title || '',
-                studentName: selectedProject?.student || '',
-                scheduledDate: formData.scheduledDate,
-                scheduledTime: formData.scheduledTime,
-                location: formData.location
-              }
+        setCommittees(prev => prev.map(c =>
+          c.id === editingCommittee.id
+            ? {
+              ...c,
+              name: formData.name,
+              members: selectedMembersData,
+              projectId: formData.projectId,
+              projectTitle: selectedProject?.title || '',
+              studentName: selectedProject?.student || '',
+              scheduledDate: formData.scheduledDate,
+              scheduledTime: formData.scheduledTime,
+              location: formData.location
+            }
             : c
         ))
       } else {
@@ -286,10 +288,22 @@ const CommitteeDistribution: React.FC = () => {
     setIsModalOpen(true)
   }
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [committeeIdToDelete, setCommitteeIdToDelete] = useState<string | null>(null)
   const handleDelete = (id: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه اللجنة؟')) {
-      setCommittees(prev => prev.filter(c => c.id !== id))
+    setCommitteeIdToDelete(id)
+    setConfirmDeleteOpen(true)
+  }
+  const confirmDelete = () => {
+    if (committeeIdToDelete) {
+      setCommittees(prev => prev.filter(c => c.id !== committeeIdToDelete))
     }
+    setConfirmDeleteOpen(false)
+    setCommitteeIdToDelete(null)
+  }
+  const cancelDelete = () => {
+    setConfirmDeleteOpen(false)
+    setCommitteeIdToDelete(null)
   }
 
   const handleMemberToggle = (memberId: string) => {
@@ -354,7 +368,7 @@ const CommitteeDistribution: React.FC = () => {
                           {getStatusText(committee.status)}
                         </span>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <p className="text-sm text-gray-600 mb-1">المشروع:</p>
@@ -418,129 +432,137 @@ const CommitteeDistribution: React.FC = () => {
       </Card>
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {editingCommittee ? 'تعديل اللجنة' : 'لجنة جديدة'}
-            </h2>
-            <Form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <FormGroup>
-                  <FormLabel htmlFor="name" required>اسم اللجنة</FormLabel>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="أدخل اسم اللجنة..."
-                    error={errors.name}
-                  />
-                </FormGroup>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingCommittee ? 'تعديل اللجنة' : 'لجنة جديدة'}
+        size="xl"
+        onSubmit={handleSubmit}
+      >
+        <Form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <FormGroup>
+              <FormLabel htmlFor="name" required>اسم اللجنة</FormLabel>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="أدخل اسم اللجنة..."
+                error={errors.name}
+              />
+            </FormGroup>
 
-                <FormGroup>
-                  <FormLabel htmlFor="projectId" required>المشروع</FormLabel>
-                  <select
-                    id="projectId"
-                    value={formData.projectId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, projectId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent"
-                  >
-                    <option value="">اختر المشروع</option>
-                    {availableProjects.map(project => (
-                      <option key={project.id} value={project.id}>
-                        {project.title} - {project.student}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.projectId && <FormError>{errors.projectId}</FormError>}
-                </FormGroup>
+            <FormGroup>
+              <FormLabel htmlFor="projectId" required>المشروع</FormLabel>
+              <select
+                id="projectId"
+                value={formData.projectId}
+                onChange={(e) => setFormData(prev => ({ ...prev, projectId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              >
+                <option value="">اختر المشروع</option>
+                {availableProjects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.title} - {project.student}
+                  </option>
+                ))}
+              </select>
+              {errors.projectId && <FormError>{errors.projectId}</FormError>}
+            </FormGroup>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormGroup>
-                    <FormLabel htmlFor="scheduledDate" required>تاريخ المناقشة</FormLabel>
-                    <Input
-                      id="scheduledDate"
-                      type="date"
-                      value={formData.scheduledDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                      error={errors.scheduledDate}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormGroup>
+                <FormLabel htmlFor="scheduledDate" required>تاريخ المناقشة</FormLabel>
+                <Input
+                  id="scheduledDate"
+                  type="date"
+                  value={formData.scheduledDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                  error={errors.scheduledDate}
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel htmlFor="scheduledTime" required>وقت المناقشة</FormLabel>
+                <Input
+                  id="scheduledTime"
+                  type="time"
+                  value={formData.scheduledTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, scheduledTime: e.target.value }))}
+                  error={errors.scheduledTime}
+                />
+              </FormGroup>
+            </div>
+
+            <FormGroup>
+              <FormLabel htmlFor="location" required>مكان المناقشة</FormLabel>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="أدخل مكان المناقشة..."
+                error={errors.location}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <FormLabel required>أعضاء اللجنة</FormLabel>
+              <div className="space-y-2">
+                {availableMembers.map((member) => (
+                  <div key={member.id} className="flex items-center space-x-3 rtl:space-x-reverse">
+                    <input
+                      type="checkbox"
+                      id={`member-${member.id}`}
+                      checked={formData.selectedMembers.includes(member.id)}
+                      onChange={() => handleMemberToggle(member.id)}
+                      className="w-4 h-4 text-gpms-dark border-gray-300 rounded focus:ring-gpms-light"
                     />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel htmlFor="scheduledTime" required>وقت المناقشة</FormLabel>
-                    <Input
-                      id="scheduledTime"
-                      type="time"
-                      value={formData.scheduledTime}
-                      onChange={(e) => setFormData(prev => ({ ...prev, scheduledTime: e.target.value }))}
-                      error={errors.scheduledTime}
-                    />
-                  </FormGroup>
-                </div>
-
-                <FormGroup>
-                  <FormLabel htmlFor="location" required>مكان المناقشة</FormLabel>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="أدخل مكان المناقشة..."
-                    error={errors.location}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel required>أعضاء اللجنة</FormLabel>
-                  <div className="space-y-2">
-                    {availableMembers.map((member) => (
-                      <div key={member.id} className="flex items-center space-x-3 rtl:space-x-reverse">
-                        <input
-                          type="checkbox"
-                          id={`member-${member.id}`}
-                          checked={formData.selectedMembers.includes(member.id)}
-                          onChange={() => handleMemberToggle(member.id)}
-                          className="w-4 h-4 text-gpms-dark border-gray-300 rounded focus:ring-gpms-light"
-                        />
-                        <label htmlFor={`member-${member.id}`} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-gray-900">{member.name}</p>
-                              <p className="text-sm text-gray-500">{member.department} - {member.specialization}</p>
-                            </div>
-                            <span className={cn(
-                              'px-2 py-1 rounded-full text-xs font-medium',
-                              getRoleColor(member.role)
-                            )}>
-                              {getRoleText(member.role)}
-                            </span>
-                          </div>
-                        </label>
+                    <label htmlFor={`member-${member.id}`} className="flex-1 cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">{member.name}</p>
+                          <p className="text-sm text-gray-500">{member.department} - {member.specialization}</p>
+                        </div>
+                        <span className={cn(
+                          'px-2 py-1 rounded-full text-xs font-medium',
+                          getRoleColor(member.role)
+                        )}>
+                          {getRoleText(member.role)}
+                        </span>
                       </div>
-                    ))}
+                    </label>
                   </div>
-                  {errors.members && <FormError>{errors.members}</FormError>}
-                </FormGroup>
-
-                {errors.general && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                    {errors.general}
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-4 rtl:space-x-reverse pt-4 border-t">
-                  <Button variant="outline" type="button" onClick={handleCloseModal}>
-                    إلغاء
-                  </Button>
-                  <Button type="submit" loading={isLoading}>
-                    <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                    {editingCommittee ? 'تحديث' : 'حفظ'}
-                  </Button>
-                </div>
+                ))}
               </div>
-            </Form>
+              {errors.members && <FormError>{errors.members}</FormError>}
+            </FormGroup>
+
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {errors.general}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-4 rtl:space-x-reverse pt-4 border-t">
+              <Button variant="outline" type="button" onClick={handleCloseModal}>
+                إلغاء
+              </Button>
+              <Button type="submit" loading={isLoading}>
+                <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                {editingCommittee ? 'تحديث' : 'حفظ'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        </Form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذه اللجنة؟ لا يمكن التراجع عن ذلك."
+        variant="destructive"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </div>
   )
 }

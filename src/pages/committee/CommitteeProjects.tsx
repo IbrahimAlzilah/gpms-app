@@ -4,10 +4,12 @@ import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
-import { SearchBar } from '../../components/ui/Filter'
+// import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Eye,
   Edit,
@@ -18,8 +20,7 @@ import {
   Grid3X3,
   List,
   FolderOpen,
-  SlidersHorizontal,
-  UserCheck
+  SlidersHorizontal
 } from 'lucide-react'
 
 interface Project {
@@ -46,6 +47,10 @@ const CommitteeProjects: React.FC = () => {
   const [sortBy, setSortBy] = useState('submittedDate')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
+  const [confirmApproveOpen, setConfirmApproveOpen] = useState(false)
+  const [projectIdToApprove, setProjectIdToApprove] = useState<string | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', description: '', status: 'submitted' as Project['status'], priority: 'medium' as Project['priority'] })
 
   // Mock data
   const [projects] = useState<Project[]>([
@@ -119,6 +124,22 @@ const CommitteeProjects: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority
   })
 
+  const getStatusLabel = (status: Project['status']) => {
+    switch (status) {
+      case 'submitted': return 'مُقدم'
+      case 'under_review': return 'قيد المراجعة'
+      case 'approved': return 'موافق عليه'
+      case 'rejected': return 'مرفوض'
+      case 'in_progress': return 'قيد التنفيذ'
+      case 'completed': return 'مكتمل'
+      default: return status
+    }
+  }
+
+  const getPriorityLabel = (p: Project['priority']) => (
+    p === 'low' ? 'منخفض' : p === 'medium' ? 'متوسط' : 'عالي'
+  )
+
   const handleFilterClear = () => {
     setStatusFilter('all')
     setPriorityFilter('all')
@@ -126,164 +147,42 @@ const CommitteeProjects: React.FC = () => {
     setSortOrder('desc')
   }
 
+  const [viewProject, setViewProject] = useState<Project | null>(null)
   const handleViewProject = (project: Project) => {
-    // Open project details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل المشروع</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">اسم المشروع:</span>
-              <p class="text-gray-600">${project.title}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${project.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">الأولوية:</span>
-              <p class="text-gray-600">${project.priority}</p>
-            </div>
-            <div>
-              <span class="font-medium">التقدم:</span>
-              <p class="text-gray-600">${project.progress}%</p>
-            </div>
-            <div>
-              <span class="font-medium">المشرف:</span>
-              <p class="text-gray-600">${project.supervisor}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطلاب:</span>
-              <p class="text-gray-600">${project.students.join(', ')}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ التقديم:</span>
-              <p class="text-gray-600">${new Date(project.submittedDate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الدرجة:</span>
-              <p class="text-gray-600">${project.score || 'لم يتم التقييم بعد'}</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${project.description}</p>
-          </div>
-          ${project.technologies && project.technologies.length > 0 ? `
-            <div>
-              <span class="font-medium">التقنيات المستخدمة:</span>
-              <div class="flex flex-wrap gap-2 mt-1">
-                ${project.technologies.map(tech =>
-      `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${tech}</span>`
-    ).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewProject(project)
   }
 
   const handleEditProject = (project: Project) => {
-    // Open edit project modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تعديل المشروع</h3>
-        <form id="editProjectForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">عنوان المشروع</label>
-            <input type="text" name="title" value="${project.title}" required 
-                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
-            <textarea name="description" rows="3" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${project.description}</textarea>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
-              <select name="status" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="pending" ${project.status === 'pending' ? 'selected' : ''}>في الانتظار</option>
-                <option value="approved" ${project.status === 'approved' ? 'selected' : ''}>معتمد</option>
-                <option value="rejected" ${project.status === 'rejected' ? 'selected' : ''}>مرفوض</option>
-                <option value="in_progress" ${project.status === 'in_progress' ? 'selected' : ''}>قيد التنفيذ</option>
-                <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>مكتمل</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
-              <select name="priority" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="low" ${project.priority === 'low' ? 'selected' : ''}>منخفض</option>
-                <option value="medium" ${project.priority === 'medium' ? 'selected' : ''}>متوسط</option>
-                <option value="high" ${project.priority === 'high' ? 'selected' : ''}>عالي</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-            <textarea name="notes" rows="2" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${project.notes || ''}</textarea>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitProjectEdit('${project.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            حفظ التعديلات
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitProjectEdit = (projectId: string) => {
-      const form = document.getElementById('editProjectForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const projectData = {
-        title: formData.get('title'),
-        description: formData.get('description'),
-        status: formData.get('status'),
-        priority: formData.get('priority'),
-        notes: formData.get('notes')
-      }
-
-      console.log('Updating project:', projectId, projectData)
-      alert('تم تحديث المشروع بنجاح!')
-    }
+    setEditForm({ title: project.title, description: project.description, status: project.status, priority: project.priority })
+    setIsEditOpen(true)
   }
 
   const handleApproveProject = (projectId: string) => {
-    if (window.confirm('هل أنت متأكد من الموافقة على هذا المشروع؟')) {
-      console.log('Approving project:', projectId)
-      alert('تم الموافقة على المشروع بنجاح!')
-    }
+    setProjectIdToApprove(projectId)
+    setConfirmApproveOpen(true)
   }
 
-  const handleRejectProject = (projectId: string) => {
-    const reason = prompt('سبب الرفض:')
-    if (reason) {
-      console.log('Rejecting project:', projectId, reason)
-      alert('تم رفض المشروع بنجاح!')
+  const confirmApprove = () => {
+    if (projectIdToApprove) {
+      console.log('Approving project:', projectIdToApprove)
     }
+    setConfirmApproveOpen(false)
+    setProjectIdToApprove(null)
+  }
+
+  const cancelApprove = () => {
+    setConfirmApproveOpen(false)
+    setProjectIdToApprove(null)
+  }
+
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectProjectId, setRejectProjectId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const handleRejectProject = (projectId: string) => {
+    setRejectProjectId(projectId)
+    setRejectReason('')
+    setRejectOpen(true)
   }
 
   const columns = [
@@ -571,6 +470,139 @@ const CommitteeProjects: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <Modal
+        isOpen={!!viewProject}
+        onClose={() => setViewProject(null)}
+        title={viewProject ? viewProject.title : ''}
+        size="lg"
+      >
+        {viewProject && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">الحالة:</span> {getStatusLabel(viewProject.status)}</div>
+              <div><span className="font-medium">الأولوية:</span> {getPriorityLabel(viewProject.priority)}</div>
+              <div><span className="font-medium">التقدم:</span> {viewProject.progress}%</div>
+              <div><span className="font-medium">المشرف:</span> {viewProject.supervisor || 'غير محدد'}</div>
+              <div><span className="font-medium">تاريخ التقديم:</span> {new Date(viewProject.submittedDate).toLocaleDateString('ar')}</div>
+              <div><span className="font-medium">الدرجة:</span> {viewProject.score ?? '—'}</div>
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1 text-gray-600">{viewProject.description}</p>
+            </div>
+            {viewProject.students?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewProject.students.map((s, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{s}</span>
+                ))}
+              </div>
+            ) : null}
+            {viewProject.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewProject.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Modal>
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title="تعديل المشروع"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          console.log('Update project:', editForm)
+          setIsEditOpen(false)
+        }}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">عنوان المشروع</label>
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              value={editForm.title}
+              onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              value={editForm.description}
+              onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={editForm.status}
+                onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value as Project['status'] }))}
+              >
+                <option value="submitted">مُقدم</option>
+                <option value="under_review">قيد المراجعة</option>
+                <option value="approved">موافق عليه</option>
+                <option value="rejected">مرفوض</option>
+                <option value="in_progress">قيد التنفيذ</option>
+                <option value="completed">مكتمل</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الأولوية</label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                value={editForm.priority}
+                onChange={(e) => setEditForm(prev => ({ ...prev, priority: e.target.value as Project['priority'] }))}
+              >
+                <option value="low">منخفض</option>
+                <option value="medium">متوسط</option>
+                <option value="high">عالي</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Modal>
+      <ConfirmDialog
+        isOpen={confirmApproveOpen}
+        title="تأكيد الموافقة"
+        description="هل أنت متأكد من الموافقة على هذا المشروع؟"
+        variant="primary"
+        onConfirm={confirmApprove}
+        onCancel={cancelApprove}
+      />
+      <Modal
+        isOpen={rejectOpen}
+        onClose={() => { setRejectOpen(false); setRejectProjectId(null) }}
+        title="سبب الرفض"
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (rejectProjectId && rejectReason.trim()) {
+            console.log('Rejecting project:', rejectProjectId, rejectReason)
+          }
+          setRejectOpen(false)
+          setRejectProjectId(null)
+          setRejectReason('')
+        }}
+      >
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">اكتب سبب الرفض</label>
+          <textarea
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            required
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

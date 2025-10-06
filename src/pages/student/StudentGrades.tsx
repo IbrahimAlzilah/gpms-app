@@ -4,10 +4,11 @@ import { cn, getActiveFiltersCount } from '../../lib/utils'
 import { Card, CardContent, CardHeader } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Divider from '../../components/ui/Divider'
-import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import {
   Eye,
   Download,
@@ -17,8 +18,10 @@ import {
   List,
   SlidersHorizontal,
   TrendingUp,
-  Calendar,
-  User
+
+
+  Pencil,
+  Trash2
 } from 'lucide-react'
 
 interface Grade {
@@ -39,7 +42,7 @@ interface Grade {
 
 const StudentGrades: React.FC = () => {
   const { t } = useLanguage()
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('evaluationDate')
@@ -47,7 +50,7 @@ const StudentGrades: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
 
   // Mock data - UC-11: Student grades view
-  const [grades] = useState<Grade[]>([
+  const [grades, setGrades] = useState<Grade[]>([
     {
       id: '1',
       component: 'مقترح المشروع',
@@ -237,37 +240,9 @@ const StudentGrades: React.FC = () => {
     return sortOrder === 'asc' ? comparison : -comparison
   })
 
+  const [viewingGrade, setViewingGrade] = useState<Grade | null>(null)
   const handleViewGrade = (grade: Grade) => {
-    // Open grade details modal
-    const details = `
-      التقييم: ${grade.evaluationType}
-      الدرجة: ${grade.score}/${grade.maxScore}
-      التقدير: ${grade.grade}
-      التاريخ: ${new Date(grade.evaluationDate).toLocaleDateString('ar')}
-      المشرف: ${grade.supervisorName}
-      ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
-    `
-
-    // Create a modal-like display
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل التقييم</h3>
-        <div class="space-y-2 text-sm">
-          ${details.split('\n').map(line => line.trim()).filter(line => line).map(line =>
-      `<p class="py-1">${line}</p>`
-    ).join('')}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewingGrade(grade)
   }
 
   const handleDownloadGrade = (grade: Grade) => {
@@ -276,14 +251,15 @@ const StudentGrades: React.FC = () => {
 تقرير الدرجة
 =============
 
-اسم الطالب: ${grade.studentName}
-التقييم: ${grade.evaluationType}
-الدرجة: ${grade.score}/${grade.maxScore}
-التقدير: ${grade.grade}
+المكون: ${grade.component}
+الوصف: ${grade.description}
+الدرجة: ${grade.obtainedScore}/${grade.maxScore}
 النسبة المئوية: ${grade.percentage}%
+الحالة: ${getStatusText(grade.status)}
+الفئة: ${getCategoryText(grade.category)}
+المقيم: ${grade.evaluator}
 التاريخ: ${new Date(grade.evaluationDate).toLocaleDateString('ar')}
-المشرف: ${grade.supervisorName}
-${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
+${grade.comments ? `\nالملاحظات: ${grade.comments}` : ''}
 
 تم إنشاء التقرير في: ${new Date().toLocaleDateString('ar')}
     `
@@ -293,7 +269,7 @@ ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `تقرير_الدرجة_${grade.evaluationType}_${new Date().toISOString().split('T')[0]}.txt`
+    link.download = `تقرير_الدرجة_${grade.component}_${new Date().toISOString().split('T')[0]}.txt`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -305,6 +281,119 @@ ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
     setStatusFilter('all')
     setSortBy('evaluationDate')
     setSortOrder('desc')
+  }
+
+  // Add/Edit/Delete state and handlers
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [editingGrade, setEditingGrade] = useState<Grade | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null)
+
+  type GradeFormState = {
+    component: string
+    description: string
+    maxScore: number
+    obtainedScore: number
+    evaluator: string
+    evaluationDate: string
+    status: 'final' | 'draft' | 'pending'
+    comments: string
+    category: Grade['category']
+    semester: string
+    academicYear: string
+  }
+
+  const initialForm: GradeFormState = {
+    component: '',
+    description: '',
+    maxScore: 100,
+    obtainedScore: 0,
+    evaluator: '',
+    evaluationDate: new Date().toISOString().slice(0, 10),
+    status: 'draft',
+    comments: '',
+    category: 'other',
+    semester: '',
+    academicYear: ''
+  }
+
+  const [gradeForm, setGradeForm] = useState<GradeFormState>(initialForm)
+
+  const openAddModal = () => {
+    setGradeForm(initialForm)
+    setIsAddOpen(true)
+  }
+
+  const handleAddSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const maxId = Math.max(0, ...grades.map(g => Number(g.id)))
+    const newGrade: Grade = {
+      id: String(maxId + 1),
+      component: gradeForm.component || 'مكون جديد',
+      description: gradeForm.description,
+      maxScore: gradeForm.maxScore,
+      obtainedScore: gradeForm.obtainedScore,
+      percentage: gradeForm.maxScore > 0 ? Math.round((gradeForm.obtainedScore / gradeForm.maxScore) * 100) : 0,
+      evaluator: gradeForm.evaluator,
+      evaluationDate: gradeForm.evaluationDate,
+      status: gradeForm.status,
+      comments: gradeForm.comments || undefined,
+      category: gradeForm.category,
+      semester: gradeForm.semester,
+      academicYear: gradeForm.academicYear
+    }
+    setGrades(prev => [newGrade, ...prev])
+    setIsAddOpen(false)
+  }
+
+  const openEditModal = (grade: Grade) => {
+    setEditingGrade(grade)
+    setGradeForm({
+      component: grade.component,
+      description: grade.description,
+      maxScore: grade.maxScore,
+      obtainedScore: grade.obtainedScore,
+      evaluator: grade.evaluator,
+      evaluationDate: grade.evaluationDate,
+      status: grade.status,
+      comments: grade.comments || '',
+      category: grade.category,
+      semester: grade.semester,
+      academicYear: grade.academicYear
+    })
+  }
+
+  const handleEditSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!editingGrade) return
+    setGrades(prev => prev.map(g => g.id === editingGrade.id ? {
+      ...g,
+      component: gradeForm.component,
+      description: gradeForm.description,
+      maxScore: gradeForm.maxScore,
+      obtainedScore: gradeForm.obtainedScore,
+      percentage: gradeForm.maxScore > 0 ? Math.round((gradeForm.obtainedScore / gradeForm.maxScore) * 100) : 0,
+      evaluator: gradeForm.evaluator,
+      evaluationDate: gradeForm.evaluationDate,
+      status: gradeForm.status,
+      comments: gradeForm.comments || undefined,
+      category: gradeForm.category,
+      semester: gradeForm.semester,
+      academicYear: gradeForm.academicYear
+    } : g))
+    setEditingGrade(null)
+  }
+
+  const openDeleteConfirm = (grade: Grade) => {
+    setGradeToDelete(grade)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!gradeToDelete) return
+    setGrades(prev => prev.filter(g => g.id !== gradeToDelete.id))
+    setConfirmDeleteOpen(false)
+    setGradeToDelete(null)
   }
 
 
@@ -485,6 +574,9 @@ ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
                   )}
                 </Button>
               </SimplePopover>
+              <Button size="sm" onClick={() => openAddModal()} className="bg-gpms-dark text-white hover:bg-gpms-light">
+                إضافة درجة
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -622,6 +714,20 @@ ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
                         >
                           <Eye size={16} />
                         </button>
+                        <button
+                          onClick={() => openEditModal(grade)}
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="تعديل"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirm(grade)}
+                          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="حذف"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                         {grade.status === 'final' && (
                           <button
                             onClick={() => handleDownloadGrade(grade)}
@@ -656,6 +762,179 @@ ${grade.notes ? `الملاحظات: ${grade.notes}` : ''}
           )}
         </CardContent>
       </Card>
+
+      {/* View Grade Modal */}
+      <Modal
+        isOpen={!!viewingGrade}
+        onClose={() => setViewingGrade(null)}
+        title={viewingGrade ? `تفاصيل التقييم - ${viewingGrade.component}` : 'تفاصيل التقييم'}
+        size="md"
+      >
+        {viewingGrade && (
+          <div className="space-y-3 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-2">
+              <span className="font-medium">المكون:</span><span>{viewingGrade.component}</span>
+              <span className="font-medium">الفئة:</span><span>{getCategoryText(viewingGrade.category)}</span>
+              <span className="font-medium">الدرجة:</span><span>{viewingGrade.obtainedScore}/{viewingGrade.maxScore} ({viewingGrade.percentage}%)</span>
+              <span className="font-medium">الحالة:</span><span>{getStatusText(viewingGrade.status)}</span>
+              <span className="font-medium">المقيم:</span><span>{viewingGrade.evaluator}</span>
+              <span className="font-medium">التاريخ:</span><span>{new Date(viewingGrade.evaluationDate).toLocaleDateString('ar')}</span>
+              <span className="font-medium">الفصل:</span><span>{viewingGrade.semester}</span>
+              <span className="font-medium">العام الأكاديمي:</span><span>{viewingGrade.academicYear}</span>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-900 mb-1">الوصف</h4>
+              <p>{viewingGrade.description}</p>
+            </div>
+            {viewingGrade.comments && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-1">الملاحظات</h4>
+                <p>{viewingGrade.comments}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Add Grade Modal */}
+      <Modal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="إضافة درجة"
+        size="lg"
+        onSubmit={handleAddSubmit}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm mb-1">المكون</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.component} onChange={e => setGradeForm({ ...gradeForm, component: e.target.value })} required />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الفئة</label>
+            <select className="w-full border rounded px-3 py-2" value={gradeForm.category} onChange={e => setGradeForm({ ...gradeForm, category: e.target.value as GradeFormState['category'] })}>
+              {categoryOptions.filter(o => o.value !== 'all').map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">الوصف</label>
+            <textarea className="w-full border rounded px-3 py-2" rows={3} value={gradeForm.description} onChange={e => setGradeForm({ ...gradeForm, description: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الدرجة القصوى</label>
+            <input type="number" className="w-full border rounded px-3 py-2" value={gradeForm.maxScore} onChange={e => setGradeForm({ ...gradeForm, maxScore: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الدرجة المحصّلة</label>
+            <input type="number" className="w-full border rounded px-3 py-2" value={gradeForm.obtainedScore} onChange={e => setGradeForm({ ...gradeForm, obtainedScore: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الحالة</label>
+            <select className="w-full border rounded px-3 py-2" value={gradeForm.status} onChange={e => setGradeForm({ ...gradeForm, status: e.target.value as GradeFormState['status'] })}>
+              {statusOptions.filter(o => o.value !== 'all').map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-1">المقيم</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.evaluator} onChange={e => setGradeForm({ ...gradeForm, evaluator: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">تاريخ التقييم</label>
+            <input type="date" className="w-full border rounded px-3 py-2" value={gradeForm.evaluationDate} onChange={e => setGradeForm({ ...gradeForm, evaluationDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الفصل الدراسي</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.semester} onChange={e => setGradeForm({ ...gradeForm, semester: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">العام الأكاديمي</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.academicYear} onChange={e => setGradeForm({ ...gradeForm, academicYear: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">الملاحظات</label>
+            <textarea className="w-full border rounded px-3 py-2" rows={3} value={gradeForm.comments} onChange={e => setGradeForm({ ...gradeForm, comments: e.target.value })} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Grade Modal */}
+      <Modal
+        isOpen={!!editingGrade}
+        onClose={() => setEditingGrade(null)}
+        title={editingGrade ? `تعديل الدرجة - ${editingGrade.component}` : 'تعديل الدرجة'}
+        size="lg"
+        onSubmit={handleEditSubmit}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm mb-1">المكون</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.component} onChange={e => setGradeForm({ ...gradeForm, component: e.target.value })} required />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الفئة</label>
+            <select className="w-full border rounded px-3 py-2" value={gradeForm.category} onChange={e => setGradeForm({ ...gradeForm, category: e.target.value as GradeFormState['category'] })}>
+              {categoryOptions.filter(o => o.value !== 'all').map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">الوصف</label>
+            <textarea className="w-full border rounded px-3 py-2" rows={3} value={gradeForm.description} onChange={e => setGradeForm({ ...gradeForm, description: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الدرجة القصوى</label>
+            <input type="number" className="w-full border rounded px-3 py-2" value={gradeForm.maxScore} onChange={e => setGradeForm({ ...gradeForm, maxScore: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الدرجة المحصّلة</label>
+            <input type="number" className="w-full border rounded px-3 py-2" value={gradeForm.obtainedScore} onChange={e => setGradeForm({ ...gradeForm, obtainedScore: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الحالة</label>
+            <select className="w-full border rounded px-3 py-2" value={gradeForm.status} onChange={e => setGradeForm({ ...gradeForm, status: e.target.value as GradeFormState['status'] })}>
+              {statusOptions.filter(o => o.value !== 'all').map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-1">المقيم</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.evaluator} onChange={e => setGradeForm({ ...gradeForm, evaluator: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">تاريخ التقييم</label>
+            <input type="date" className="w-full border rounded px-3 py-2" value={gradeForm.evaluationDate} onChange={e => setGradeForm({ ...gradeForm, evaluationDate: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">الفصل الدراسي</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.semester} onChange={e => setGradeForm({ ...gradeForm, semester: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">العام الأكاديمي</label>
+            <input className="w-full border rounded px-3 py-2" value={gradeForm.academicYear} onChange={e => setGradeForm({ ...gradeForm, academicYear: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm mb-1">الملاحظات</label>
+            <textarea className="w-full border rounded px-3 py-2" rows={3} value={gradeForm.comments} onChange={e => setGradeForm({ ...gradeForm, comments: e.target.value })} />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirm */}
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description={`هل تريد حذف الدرجة "${gradeToDelete?.component ?? ''}"؟ لا يمكن التراجع.`}
+        confirmText="حذف"
+        cancelText="إلغاء"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => { setConfirmDeleteOpen(false); setGradeToDelete(null) }}
+      />
     </div>
   )
 }

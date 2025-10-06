@@ -7,6 +7,8 @@ import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import DocumentFormModal from '../../components/forms/DocumentFormModal'
+import Modal from '../../components/ui/Modal'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
 import {
@@ -265,98 +267,34 @@ const StudentDocuments: React.FC = () => {
     setIsModalOpen(true)
   }
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [docIdToDelete, setDocIdToDelete] = useState<string | null>(null)
   const handleDeleteDocument = (documentId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المستند؟')) {
-      setDocuments(prev => prev.filter(d => d.id !== documentId))
-    }
+    setDocIdToDelete(documentId)
+    setConfirmDeleteOpen(true)
   }
 
+  const [viewDoc, setViewDoc] = useState<Document | null>(null)
   const handleViewDocument = (document: Document) => {
-    // Open document preview modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">معاينة المستند</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">اسم المستند:</span>
-              <p class="text-gray-600">${document.name}</p>
-            </div>
-            <div>
-              <span class="font-medium">النوع:</span>
-              <p class="text-gray-600">${document.type}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحجم:</span>
-              <p class="text-gray-600">${document.size}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ الرفع:</span>
-              <p class="text-gray-600">${new Date(document.uploadedDate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${document.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشروع:</span>
-              <p class="text-gray-600">${document.projectTitle}</p>
-            </div>
-          </div>
-          ${document.description ? `
-            <div>
-              <span class="font-medium">الوصف:</span>
-              <p class="text-gray-600 mt-1">${document.description}</p>
-            </div>
-          ` : ''}
-          ${document.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${document.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-          <button onclick="window.downloadDocument('${document.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            تحميل
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add download function to window for the button
-    window.downloadDocument = (docId: string) => {
-      const doc = documents.find(d => d.id === docId)
-      if (doc) {
-        handleDownloadDocument(doc)
-      }
-    }
+    setViewDoc(document)
   }
 
-  const handleDownloadDocument = (document: Document) => {
+  const handleDownloadDocument = (docItem: Document) => {
     // Simulate document download
-    const link = document.createElement('a')
-    link.href = '#' // In real app, this would be the actual file URL
-    link.download = document.name
+    const link = window.document.createElement('a')
+    link.href = '#'
+    link.download = docItem.fileName
 
-    // Create a simple text file as placeholder
     const content = `
-مستند: ${document.name}
-النوع: ${document.type}
-الحجم: ${document.size}
-تاريخ الرفع: ${new Date(document.uploadedDate).toLocaleDateString('ar')}
-الحالة: ${document.status}
-المشروع: ${document.projectTitle}
-${document.description ? `الوصف: ${document.description}` : ''}
-${document.notes ? `ملاحظات: ${document.notes}` : ''}
+مستند: ${docItem.title}
+الملف: ${docItem.fileName}
+النوع: ${getTypeText(docItem.type)}
+الحجم: ${docItem.fileSize}
+تاريخ الرفع: ${new Date(docItem.uploadedDate).toLocaleDateString('ar')}
+الحالة: ${getStatusText(docItem.status)}
+الإصدار: ${docItem.version}
+رفع بواسطة: ${docItem.uploadedBy}
+${docItem.description ? `الوصف: ${docItem.description}` : ''}
 
 ملاحظة: هذا ملف تجريبي. في التطبيق الحقيقي، سيتم تحميل الملف الفعلي.
     `
@@ -365,9 +303,9 @@ ${document.notes ? `ملاحظات: ${document.notes}` : ''}
     const url = URL.createObjectURL(blob)
     link.href = url
 
-    document.body.appendChild(link)
+    window.document.body.appendChild(link)
     link.click()
-    document.body.removeChild(link)
+    window.document.body.removeChild(link)
     URL.revokeObjectURL(url)
   }
 
@@ -777,6 +715,59 @@ ${document.notes ? `ملاحظات: ${document.notes}` : ''}
         }}
         onSubmit={handleModalSubmit}
         editData={editingDocument}
+      />
+      <Modal
+        isOpen={!!viewDoc}
+        onClose={() => setViewDoc(null)}
+        title={viewDoc ? `معاينة المستند: ${viewDoc.title}` : 'معاينة المستند'}
+        size="lg"
+      >
+        {viewDoc && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div><span className="font-medium">النوع:</span> {getTypeText(viewDoc.type)}</div>
+              <div><span className="font-medium">الحجم:</span> {viewDoc.fileSize}</div>
+              <div><span className="font-medium">تاريخ الرفع:</span> {new Date(viewDoc.uploadedDate).toLocaleDateString('ar')}</div>
+              <div><span className="font-medium">الحالة:</span> {getStatusText(viewDoc.status)}</div>
+              <div><span className="font-medium">الإصدار:</span> {viewDoc.version}</div>
+              <div><span className="font-medium">رفع بواسطة:</span> {viewDoc.uploadedBy}</div>
+            </div>
+            <div>
+              <span className="font-medium">الوصف:</span>
+              <p className="mt-1 text-gray-600">{viewDoc.description}</p>
+            </div>
+            {viewDoc.tags?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {viewDoc.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{tag}</span>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex justify-end">
+              <Button onClick={() => handleDownloadDocument(viewDoc)} className="bg-gpms-dark text-white hover:bg-gpms-light">
+                <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                تحميل
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        title="تأكيد الحذف"
+        description="هل أنت متأكد من حذف هذا المستند؟"
+        variant="destructive"
+        onConfirm={() => {
+          if (docIdToDelete) {
+            setDocuments(prev => prev.filter(d => d.id !== docIdToDelete))
+          }
+          setConfirmDeleteOpen(false)
+          setDocIdToDelete(null)
+        }}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setDocIdToDelete(null)
+        }}
       />
     </div>
   )

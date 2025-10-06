@@ -8,6 +8,7 @@ import Divider from '../../components/ui/Divider'
 import { SearchBar } from '../../components/ui/Filter'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import DataTable from '../../components/ui/DataTable'
 import {
     Calendar,
@@ -51,6 +52,8 @@ const SupervisorSchedule: React.FC = () => {
     const [sortBy, setSortBy] = useState('date')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+    const [scheduleIdToDelete, setScheduleIdToDelete] = useState<string | null>(null)
 
     // Mock data
     const [schedules] = useState<Schedule[]>([
@@ -248,9 +251,21 @@ const SupervisorSchedule: React.FC = () => {
     }
 
     const handleDeleteSchedule = (scheduleId: string) => {
-        if (window.confirm('هل أنت متأكد من حذف هذا الموعد؟')) {
-            console.log('Delete schedule:', scheduleId)
+        setScheduleIdToDelete(scheduleId)
+        setConfirmDeleteOpen(true)
+    }
+
+    const confirmDelete = () => {
+        if (scheduleIdToDelete) {
+            console.log('Delete schedule:', scheduleIdToDelete)
         }
+        setConfirmDeleteOpen(false)
+        setScheduleIdToDelete(null)
+    }
+
+    const cancelDelete = () => {
+        setConfirmDeleteOpen(false)
+        setScheduleIdToDelete(null)
     }
 
     const handleAddSchedule = () => {

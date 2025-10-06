@@ -1,49 +1,51 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import LoginPage from '../pages/auth/LoginPage'
-import DashboardLayout from '../components/layout/MainLayout'
-import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { useAuth } from '@/context/AuthContext'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import MainLayout from '@/components/layout/MainLayout'
 
-// Student Routes
-import StudentDashboard from '../pages/student/StudentDashboard'
-import StudentProjects from '../pages/student/StudentProjects'
-import StudentProposals from '../pages/student/StudentProposals'
-import StudentRequests from '../pages/student/StudentRequests'
-import StudentDocuments from '../pages/student/StudentDocuments'
-import StudentGroupManagement from '../pages/student/StudentGroupManagement'
-import StudentGrades from '../pages/student/StudentGrades'
+// Auth
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 
-// Supervisor Routes
-import SupervisorDashboard from '../pages/supervisor/SupervisorDashboard'
-import SupervisorRequests from '../pages/supervisor/SupervisorRequests'
-import SupervisorProjects from '../pages/supervisor/SupervisorProjects'
-import SupervisorEvaluations from '../pages/supervisor/SupervisorEvaluations'
-import SupervisorNotes from '../pages/supervisor/SupervisorNotes'
-import SupervisorSchedule from '../pages/supervisor/SupervisorSchedule'
+// Student Routes (lazy)
+const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'))
+const StudentProjects = lazy(() => import('@/pages/student/StudentProjects'))
+const StudentProposals = lazy(() => import('@/pages/student/StudentProposals'))
+const StudentRequests = lazy(() => import('@/pages/student/StudentRequests'))
+const StudentDocuments = lazy(() => import('@/pages/student/StudentDocuments'))
+const StudentGroupManagement = lazy(() => import('@/pages/student/StudentGroupManagement'))
+const StudentGrades = lazy(() => import('@/pages/student/StudentGrades'))
 
-// Committee Routes
-import CommitteeDashboard from '../pages/committee/CommitteeDashboard'
-import CommitteeProposals from '../pages/committee/CommitteeProposals'
-import CommitteeProjects from '../pages/committee/CommitteeProjects'
-import CommitteeSchedules from '../pages/committee/CommitteeSchedules'
-import CommitteeReports from '../pages/committee/CommitteeReports'
-import CommitteeAnnouncements from '../pages/committee/CommitteeAnnouncements'
-import CommitteeDistribution from '../pages/committee/CommitteeDistribution'
+// Supervisor Routes (lazy)
+const SupervisorDashboard = lazy(() => import('@/pages/supervisor/SupervisorDashboard'))
+const SupervisorRequests = lazy(() => import('@/pages/supervisor/SupervisorRequests'))
+const SupervisorProjects = lazy(() => import('@/pages/supervisor/SupervisorProjects'))
+const SupervisorEvaluations = lazy(() => import('@/pages/supervisor/SupervisorEvaluations'))
+const SupervisorNotes = lazy(() => import('@/pages/supervisor/SupervisorNotes'))
+const SupervisorSchedule = lazy(() => import('@/pages/supervisor/SupervisorSchedule'))
 
-// Discussion Routes
-import DiscussionDashboard from '../pages/discussion/DiscussionDashboard'
-import DiscussionProjects from '../pages/discussion/DiscussionProjects'
-import DiscussionEvaluations from '../pages/discussion/DiscussionEvaluations'
+// Committee Routes (lazy)
+const CommitteeDashboard = lazy(() => import('@/pages/committee/CommitteeDashboard'))
+const CommitteeProposals = lazy(() => import('@/pages/committee/CommitteeProposals'))
+const CommitteeProjects = lazy(() => import('@/pages/committee/CommitteeProjects'))
+const CommitteeSchedules = lazy(() => import('@/pages/committee/CommitteeSchedules'))
+const CommitteeReports = lazy(() => import('@/pages/committee/CommitteeReports'))
+const CommitteeAnnouncements = lazy(() => import('@/pages/committee/CommitteeAnnouncements'))
+const CommitteeDistribution = lazy(() => import('@/pages/committee/CommitteeDistribution'))
 
-// Admin Routes
-import AdminDashboard from '../pages/admin/AdminDashboard'
-import AdminUsers from '../pages/admin/AdminUsers'
-import AdminReports from '../pages/admin/AdminReports'
+// Discussion Routes (lazy)
+const DiscussionDashboard = lazy(() => import('@/pages/discussion/DiscussionDashboard'))
+const DiscussionProjects = lazy(() => import('@/pages/discussion/DiscussionProjects'))
+const DiscussionEvaluations = lazy(() => import('@/pages/discussion/DiscussionEvaluations'))
 
-// Demo Routes
-import ComponentsDemo from '../pages/ComponentsDemo'
-import SupervisorProposals from '@/pages/supervisor/SupervisorProposals'
+// Admin Routes (lazy)
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'))
+const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'))
+const AdminReports = lazy(() => import('@/pages/admin/AdminReports'))
+
+// Demo Routes (lazy)
+const ComponentsDemo = lazy(() => import('@/pages/ComponentsDemo'))
+const SupervisorProposals = lazy(() => import('@/pages/supervisor/SupervisorProposals'))
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -54,16 +56,19 @@ const AppRoutes: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     )
   }
 
   return (
-    <DashboardLayout>
-      <Routes>
+    <MainLayout>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
         {/* Student Routes */}
         {user?.role === 'student' && (
           <>
@@ -138,8 +143,9 @@ const AppRoutes: React.FC = () => {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </DashboardLayout>
+        </Routes>
+      </Suspense>
+    </MainLayout>
   )
 }
 

@@ -15,10 +15,12 @@ export { default as AdvancedFilter } from './ui/AdvancedFilter'
 export { default as FilterButton } from './ui/FilterButton'
 export { default as FilterPopover } from './ui/FilterPopover'
 export { default as FilterField, FilterToggleField } from './ui/FilterField'
+export { default as Modal } from './ui/Modal'
+export { ModalProvider } from './ui/ModalProvider'
+export { default as ConfirmDialog } from './ui/ConfirmDialog'
 
 // Layout Components
-export { default as ResponsiveLayout } from './layout/ResponsiveLayout'
+// ResponsiveLayout moved to needs-review
 
 // Common Components
-export { default as SubMenu } from './common/SubMenu'
-export { StudentDocumentsExample, CompactHeaderMenu, sidebarMenuItems } from './common/SubMenuExample'
+// SubMenu moved to needs-review; prefer using './ui/SubMenu'

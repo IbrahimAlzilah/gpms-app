@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
   useEffect(() => {
     try {
       localStorage.setItem('sidebar:collapsed', collapsed ? '1' : '0')
-    } catch {}
+    } catch { }
   }, [collapsed])
 
   useEffect(() => {
@@ -44,21 +44,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
       if (onToggle && typeof stored === 'string' && storedCollapsed !== collapsed) {
         onToggle()
       }
-    } catch {}
+    } catch { }
     // نجري هذه المزامنة مرة واحدة عند التحميل
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // تحديث حالة SubMenus بناءً على المسار الحالي
+  // تذكر حالة فتح/إغلاق القوائم الفرعية عبر الجلسات بدون تفعيل أي Route تلقائياً
   useEffect(() => {
-    const newStates: SubMenuStates = {}
-
-    if (user?.role === 'student' && location.pathname.includes('/student/proposals')) {
-      newStates.proposals = true
-    }
-
-    setSubMenuStates(newStates)
-  }, [location.pathname, user?.role])
+    try {
+      const raw = localStorage.getItem('sidebar:submenus')
+      if (raw) {
+        setSubMenuStates(JSON.parse(raw) as SubMenuStates)
+      }
+    } catch { }
+  }, [])
 
   // تعريف عناصر التنقل بشكل محسن ومنظم
   const navigationItems = useMemo((): NavigationItem[] => {
@@ -93,23 +92,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
   const createSubMenuToggleHandler = useMemo(() => {
     return (subMenuKey: string) => {
       return () => {
-        const isCurrentlyActive = location.pathname.includes('/student/proposals')
-
-        if (isCurrentlyActive) {
-          setSubMenuStates(prev => ({
-            ...prev,
-            [subMenuKey]: !prev[subMenuKey]
-          }))
-        } else {
-          // التنقل للعنصر الأول في الـ SubMenu إذا لم نكن في الصفحة النشطة
-          const firstItem = navigationItems.find(item => (item as any).key === subMenuKey)?.subMenuItems?.[0]
-          if (firstItem) {
-            navigate(firstItem.route)
-          }
-        }
+        setSubMenuStates(prev => {
+          const next = { ...prev, [subMenuKey]: !prev[subMenuKey] }
+          try { localStorage.setItem('sidebar:submenus', JSON.stringify(next)) } catch { }
+          return next
+        })
       }
     }
-  }, [location.pathname, navigate, navigationItems])
+  }, [])
 
   // رندر عنصر القائمة مع تحسينات للأداء
   const renderNavigationItem = useMemo(() => {
@@ -119,9 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
         (item.href !== '/dashboard' && location.pathname.startsWith(item.href))
 
       // التعامل مع العناصر التي لها SubMenu
-      if (item.hasSubMenu && user?.role === 'student') {
-        const subMenuKey = (item as any).key || 'proposals'
-        const isSubMenuActive = location.pathname.includes('/student/proposals')
+      if (item.hasSubMenu) {
+        const subMenuKey = (item as any).key || item.href
         const isSubMenuOpen = subMenuStates[subMenuKey] || false
 
         return (
@@ -131,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
             isOpen={isSubMenuOpen}
             onToggle={createSubMenuToggleHandler(subMenuKey)}
             onItemClick={handleSubMenuClick}
-            isActive={isSubMenuActive}
+            isActive={false}
             collapsed={collapsed}
             isRTL={isRTL}
             icon={Icon}
@@ -169,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
       <header className="flex items-center justify-between px-3 py-[0.875rem] min-h-[4.3rem] border-b border-gray-100">
         <div className="flex items-center space-x-3 rtl:space-x-reverse">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center">
-            <img src='./logo.png' alt='Logo' />
+            <img src="/logo.png" alt='Logo' />
           </div>
           {!collapsed && (
             <div>

@@ -8,6 +8,7 @@ import { SearchBar } from '../../components/ui/Filter'
 import DataTable from '../../components/ui/DataTable'
 import SimplePopover from '../../components/ui/SimplePopover'
 import AdvancedFilter from '../../components/ui/AdvancedFilter'
+import Modal from '../../components/ui/Modal'
 import {
   Eye,
   Edit,
@@ -57,7 +58,7 @@ const SupervisorEvaluations: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid')
 
   // Mock data - تقييمات المشرف
-  const [evaluations] = useState<Evaluation[]>([
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([
     {
       id: '1',
       projectTitle: 'تطبيق إدارة المكتبة الذكية',
@@ -284,203 +285,20 @@ const SupervisorEvaluations: React.FC = () => {
     return sortOrder === 'asc' ? comparison : -comparison
   })
 
+  const [viewingEvaluation, setViewingEvaluation] = useState<Evaluation | null>(null)
+  const [editingEvaluation, setEditingEvaluation] = useState<Evaluation | null>(null)
+  const [startingEvaluation, setStartingEvaluation] = useState<Evaluation | null>(null)
+
   const handleViewEvaluation = (evaluation: Evaluation) => {
-    // Open evaluation details modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تفاصيل التقييم</h3>
-        <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="font-medium">نوع التقييم:</span>
-              <p class="text-gray-600">${evaluation.type}</p>
-            </div>
-            <div>
-              <span class="font-medium">الحالة:</span>
-              <p class="text-gray-600">${evaluation.status}</p>
-            </div>
-            <div>
-              <span class="font-medium">المشروع:</span>
-              <p class="text-gray-600">${evaluation.projectTitle}</p>
-            </div>
-            <div>
-              <span class="font-medium">الطلاب:</span>
-              <p class="text-gray-600">${evaluation.students.join(', ')}</p>
-            </div>
-            <div>
-              <span class="font-medium">تاريخ التقييم:</span>
-              <p class="text-gray-600">${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
-            </div>
-            <div>
-              <span class="font-medium">الدرجة:</span>
-              <p class="text-gray-600">${evaluation.score || 'لم يتم التقييم بعد'}</p>
-            </div>
-          </div>
-          <div>
-            <span class="font-medium">الوصف:</span>
-            <p class="text-gray-600 mt-1">${evaluation.description}</p>
-          </div>
-          ${evaluation.criteria && evaluation.criteria.length > 0 ? `
-            <div>
-              <span class="font-medium">معايير التقييم:</span>
-              <ul class="list-disc list-inside text-gray-600 mt-1 space-y-1">
-                ${evaluation.criteria.map(criterion => `<li>${criterion}</li>`).join('')}
-              </ul>
-            </div>
-          ` : ''}
-          ${evaluation.notes ? `
-            <div>
-              <span class="font-medium">ملاحظات:</span>
-              <p class="text-gray-600 mt-1">${evaluation.notes}</p>
-            </div>
-          ` : ''}
-        </div>
-        <div class="mt-6 flex justify-end">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إغلاق
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
+    setViewingEvaluation(evaluation)
   }
 
   const handleEditEvaluation = (evaluation: Evaluation) => {
-    // Open edit evaluation modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">تعديل التقييم</h3>
-        <form id="editEvaluationForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">نوع التقييم</label>
-            <select name="type" required 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="midterm" ${evaluation.type === 'midterm' ? 'selected' : ''}>تقييم مرحلي</option>
-              <option value="final" ${evaluation.type === 'final' ? 'selected' : ''}>تقييم نهائي</option>
-              <option value="presentation" ${evaluation.type === 'presentation' ? 'selected' : ''}>عرض تقديمي</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">الوصف</label>
-            <textarea name="description" rows="3" required 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${evaluation.description}</textarea>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">تاريخ التقييم</label>
-              <input type="date" name="evaluationDate" value="${evaluation.evaluationDate}" required 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الدرجة</label>
-              <input type="number" name="score" value="${evaluation.score || ''}" min="0" max="100" 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
-            <textarea name="notes" rows="2" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">${evaluation.notes || ''}</textarea>
-          </div>
-        </form>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitEvaluationEdit('${evaluation.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            حفظ التعديلات
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitEvaluationEdit = (evaluationId: string) => {
-      const form = document.getElementById('editEvaluationForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const evaluationData = {
-        type: formData.get('type'),
-        description: formData.get('description'),
-        evaluationDate: formData.get('evaluationDate'),
-        score: formData.get('score'),
-        notes: formData.get('notes')
-      }
-
-      console.log('Updating evaluation:', evaluationId, evaluationData)
-      alert('تم تحديث التقييم بنجاح!')
-    }
+    setEditingEvaluation(evaluation)
   }
 
   const handleStartEvaluation = (evaluation: Evaluation) => {
-    // Open start evaluation modal
-    const modal = document.createElement('div')
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">بدء التقييم: ${evaluation.projectTitle}</h3>
-        <div class="space-y-4">
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-medium text-blue-900 mb-2">معلومات التقييم</h4>
-            <div class="text-sm text-blue-800 space-y-1">
-              <p><strong>النوع:</strong> ${evaluation.type}</p>
-              <p><strong>الطلاب:</strong> ${evaluation.students.join(', ')}</p>
-              <p><strong>التاريخ:</strong> ${new Date(evaluation.evaluationDate).toLocaleDateString('ar')}</p>
-            </div>
-          </div>
-          
-          <form id="startEvaluationForm" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">الدرجة (0-100)</label>
-              <input type="number" name="score" required min="0" max="100" 
-                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">التعليقات</label>
-              <textarea name="comments" rows="4" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">التوصيات</label>
-              <textarea name="recommendations" rows="3" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-            </div>
-          </form>
-        </div>
-        <div class="mt-6 flex justify-end space-x-3 rtl:space-x-reverse">
-          <button onclick="this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-            إلغاء
-          </button>
-          <button onclick="window.submitEvaluation('${evaluation.id}'); this.closest('.fixed').remove()" 
-                  class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-            إرسال التقييم
-          </button>
-        </div>
-      </div>
-    `
-    document.body.appendChild(modal)
-
-    // Add submit function to window
-    window.submitEvaluation = (evaluationId: string) => {
-      const form = document.getElementById('startEvaluationForm') as HTMLFormElement
-      const formData = new FormData(form)
-      const evaluationData = {
-        score: formData.get('score'),
-        comments: formData.get('comments'),
-        recommendations: formData.get('recommendations')
-      }
-
-      console.log('Submitting evaluation:', evaluationId, evaluationData)
-      alert('تم إرسال التقييم بنجاح!')
-    }
+    setStartingEvaluation(evaluation)
   }
 
   const handleFilterClear = () => {
@@ -622,10 +440,10 @@ const SupervisorEvaluations: React.FC = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <Award className="w-6 h-6 text-gpms-dark" />
+              {/* <Award className="w-6 h-6 text-gpms-dark" /> */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">تقييمات المشاريع</h1>
-                <p className="text-gray-600 mt-1">إدارة وتقييم مشاريع الطلاب</p>
+                {/* <p className="text-gray-600 mt-1">إدارة وتقييم مشاريع الطلاب</p> */}
               </div>
             </div>
 
@@ -778,7 +596,7 @@ const SupervisorEvaluations: React.FC = () => {
                     {/* Evaluation Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center">
-                        <div className="w-12 h-12 bg-gpms-light rounded-lg flex items-center justify-center ml-3 rtl:ml-0 rtl:mr-3">
+                        <div className="w-10 h-10 bg-gpms-light rounded-lg flex items-center justify-center mr-3 rtl:ml-3 rtl:mr-0">
                           <Award size={24} className="text-white" />
                         </div>
                         <div className="flex-1">
@@ -904,6 +722,147 @@ const SupervisorEvaluations: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      {/* View Evaluation Modal */}
+      <Modal
+        isOpen={!!viewingEvaluation}
+        onClose={() => setViewingEvaluation(null)}
+        title={viewingEvaluation ? `تفاصيل التقييم - ${viewingEvaluation.projectTitle}` : 'تفاصيل التقييم'}
+        size="lg"
+      >
+        {viewingEvaluation && (
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium">نوع التقييم:</span>
+                <p className="mt-1">{getTypeText(viewingEvaluation.evaluationType)}</p>
+              </div>
+              <div>
+                <span className="font-medium">الحالة:</span>
+                <p className="mt-1">{getStatusText(viewingEvaluation.status)}</p>
+              </div>
+              <div>
+                <span className="font-medium">تاريخ الاستحقاق:</span>
+                <p className="mt-1">{new Date(viewingEvaluation.dueDate).toLocaleDateString('ar')}</p>
+              </div>
+              <div>
+                <span className="font-medium">الطالب:</span>
+                <p className="mt-1">{viewingEvaluation.studentName} ({viewingEvaluation.studentId})</p>
+              </div>
+            </div>
+            <div>
+              <span className="font-medium">المشروع:</span>
+              <p className="mt-1">{viewingEvaluation.projectTitle}</p>
+            </div>
+            {typeof viewingEvaluation.score === 'number' && viewingEvaluation.score > 0 && (
+              <div>
+                <span className="font-medium">الدرجة:</span>
+                <p className="mt-1">{viewingEvaluation.score}/{viewingEvaluation.maxScore}</p>
+              </div>
+            )}
+            {viewingEvaluation.comments && (
+              <div>
+                <span className="font-medium">التعليقات:</span>
+                <p className="mt-1">{viewingEvaluation.comments}</p>
+              </div>
+            )}
+            {viewingEvaluation.tags.length > 0 && (
+              <div>
+                <span className="font-medium">الوسوم:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {viewingEvaluation.tags.map((tag, i) => (
+                    <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Start Evaluation Modal */}
+      <Modal
+        isOpen={!!startingEvaluation}
+        onClose={() => setStartingEvaluation(null)}
+        title={startingEvaluation ? `بدء التقييم - ${startingEvaluation.projectTitle}` : 'بدء التقييم'}
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (!startingEvaluation) return
+          const form = e?.target as HTMLFormElement
+          const formData = new FormData(form)
+          const score = Number(formData.get('score') || 0)
+          const comments = String(formData.get('comments') || '')
+          setEvaluations(prev => prev.map(ev => ev.id === startingEvaluation.id ? { ...ev, score, comments, status: 'in_progress' } : ev))
+          setStartingEvaluation(null)
+        }}
+      >
+        {startingEvaluation && (
+          <form className="space-y-4">
+            <div className="bg-blue-50 p-3 rounded">
+              <div className="text-sm text-blue-900">
+                <div><strong>النوع:</strong> {getTypeText(startingEvaluation.evaluationType)}</div>
+                <div><strong>الطالب:</strong> {startingEvaluation.studentName}</div>
+                <div><strong>الاستحقاق:</strong> {new Date(startingEvaluation.dueDate).toLocaleDateString('ar')}</div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">الدرجة (0-100)</label>
+              <input name="score" type="number" min={0} max={100} className="w-full border rounded px-3 py-2" required />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">التعليقات</label>
+              <textarea name="comments" rows={4} className="w-full border rounded px-3 py-2" required />
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Edit Evaluation Modal */}
+      <Modal
+        isOpen={!!editingEvaluation}
+        onClose={() => setEditingEvaluation(null)}
+        title={editingEvaluation ? `تعديل التقييم - ${editingEvaluation.projectTitle}` : 'تعديل التقييم'}
+        size="md"
+        onSubmit={(e) => {
+          e?.preventDefault()
+          if (!editingEvaluation) return
+          const form = e?.target as HTMLFormElement
+          const formData = new FormData(form)
+          const evaluationType = String(formData.get('type') || editingEvaluation.evaluationType) as Evaluation['evaluationType']
+          const dueDate = String(formData.get('dueDate') || editingEvaluation.dueDate)
+          const score = formData.get('score') ? Number(formData.get('score')) : editingEvaluation.score
+          const comments = String(formData.get('comments') || editingEvaluation.comments || '')
+          setEvaluations(prev => prev.map(ev => ev.id === editingEvaluation.id ? { ...ev, evaluationType, dueDate, score, comments } : ev))
+          setEditingEvaluation(null)
+        }}
+      >
+        {editingEvaluation && (
+          <form className="space-y-4">
+            <div>
+              <label className="block text-sm mb-1">نوع التقييم</label>
+              <select name="type" defaultValue={editingEvaluation.evaluationType} className="w-full border rounded px-3 py-2">
+                {typeOptions.filter(o => o.value !== 'all').map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm mb-1">تاريخ الاستحقاق</label>
+                <input name="dueDate" type="date" defaultValue={editingEvaluation.dueDate} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">الدرجة</label>
+                <input name="score" type="number" min={0} max={100} defaultValue={editingEvaluation.score} className="w-full border rounded px-3 py-2" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">التعليقات</label>
+              <textarea name="comments" rows={3} defaultValue={editingEvaluation.comments} className="w-full border rounded px-3 py-2" />
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

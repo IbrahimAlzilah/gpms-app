@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
@@ -35,17 +35,9 @@ const SubMenu: React.FC<SubMenuProps> = ({
     title,
   
 }) => {
-    const navigate = useNavigate()
-
     const handleToggle = () => {
-        if (isActive) {
-            onToggle()
-        } else {
-            // Navigate to first submenu item if not already active
-            if (items.length > 0) {
-                navigate(items[0].route)
-            }
-        }
+        // Only toggle open/close. Do NOT navigate automatically.
+        onToggle()
     }
 
     return (
@@ -83,7 +75,7 @@ const SubMenu: React.FC<SubMenuProps> = ({
             {!collapsed && (
                 <div className={cn(
                     'overflow-hidden transition-all duration-300 ease-in-out',
-                    isOpen && isActive ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 )}>
                     <div className="mt-2 mr-8 rtl:ml-8 rtl:mr-0 space-y-1">
                         {items.map((item) => (
@@ -111,4 +103,4 @@ const SubMenu: React.FC<SubMenuProps> = ({
     )
 }
 
-export default SubMenu
+export default React.memo(SubMenu)
