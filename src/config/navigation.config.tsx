@@ -57,22 +57,22 @@ export const roleNavigation: Record<RoleKey, NavigationConfigItem[]> = {
       icon: FileText,
       hasSubMenu: true,
       subMenuItems: [
-        { key: 'my', label: 'مقترحاتي', icon: <MyProposalsIcon className="w-4 h-4" />, route: '/student/proposals/my' },
-        { key: 'group', label: 'مقترحات مجموعتي', icon: <GroupProposalsIcon className="w-4 h-4" />, route: '/student/proposals/group' },
-        { key: 'approved', label: 'المقترحات المعتمدة', icon: <ApprovedProposalsIcon className="w-4 h-4" />, route: '/student/proposals/approved' }
+        { key: 'my', label: 'مقترحاتي', icon: <MyProposalsIcon className="w-4 h-4" />, route: '/proposals/my' },
+        { key: 'group', label: 'مقترحات مجموعتي', icon: <GroupProposalsIcon className="w-4 h-4" />, route: '/proposals/group' },
+        { key: 'approved', label: 'المقترحات المعتمدة', icon: <ApprovedProposalsIcon className="w-4 h-4" />, route: '/proposals/approved' }
       ]
     },
     { nameKey: 'navigation.requests', href: '/requests', icon: Send },
     { nameKey: 'navigation.documents', href: '/documents', icon: Upload },
-    { name: 'إدارة المجموعة', href: '/group-management', icon: UserPlus },
-    { nameKey: 'navigation.grades', href: '/grades', icon: Award }
+    { name: 'إدارة المجموعة', href: '/groups', icon: UserPlus },
+    { nameKey: 'navigation.grades', href: '/evaluations', icon: Award }
   ],
   supervisor: [
     { name: 'قائمة المشاريع', href: '/projects', icon: FolderOpen },
     { nameKey: 'navigation.proposals', href: '/proposals', icon: FileText },
     { nameKey: 'navigation.requests', href: '/requests', icon: Send },
-    { nameKey: 'navigation.documents', href: '/supervisor/documents', icon: FileCheck },
-    { nameKey: 'navigation.grades', href: '/supervisor/grades', icon: Award }
+    { nameKey: 'navigation.documents', href: '/documents', icon: FileCheck },
+    { nameKey: 'navigation.grades', href: '/evaluations', icon: Award }
   ],
   committee: [
     { nameKey: 'navigation.proposals', href: '/proposals', icon: FileText },
@@ -80,7 +80,7 @@ export const roleNavigation: Record<RoleKey, NavigationConfigItem[]> = {
     { nameKey: 'navigation.schedules', href: '/schedules', icon: Calendar },
     { name: 'إعلان الفترات', href: '/announcements', icon: Megaphone },
     { name: 'توزيع اللجان', href: '/distribution', icon: UserCheck },
-    { name: 'إصدار التقارير', href: '/committee-reports', icon: FileBarChart }
+    { name: 'إصدار التقارير', href: '/reports', icon: FileBarChart }
   ],
   discussion: [
     { nameKey: 'navigation.projects', href: '/projects', icon: FolderOpen },

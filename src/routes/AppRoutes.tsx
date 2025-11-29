@@ -3,52 +3,48 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import MainLayout from '@/components/layout/MainLayout'
+import { ProtectedRoute } from '@/components/auth'
 
 // Auth
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
 
-// Student Routes (lazy)
-const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'))
-const StudentProjects = lazy(() => import('@/pages/student/StudentProjects'))
-const StudentProposals = lazy(() => import('@/pages/student/StudentProposals'))
-const StudentRequests = lazy(() => import('@/pages/student/StudentRequests'))
-const StudentDocuments = lazy(() => import('@/pages/student/StudentDocuments'))
-const StudentGroupManagement = lazy(() => import('@/pages/student/StudentGroupManagement'))
-const StudentGrades = lazy(() => import('@/pages/student/StudentGrades'))
+// Feature-based routes
+const Dashboard = lazy(() => import('@/pages/dashboards'))
+const Projects = lazy(() => import('@/pages/projects'))
+const ProjectAdd = lazy(() => import('@/pages/projects/new'))
+const ProjectEdit = lazy(() => import('@/pages/projects/edit'))
+const Proposals = lazy(() => import('@/pages/proposals'))
+const ProposalAdd = lazy(() => import('@/pages/proposals/new'))
+const ProposalEdit = lazy(() => import('@/pages/proposals/edit'))
+const Documents = lazy(() => import('@/pages/documents'))
+const DocumentAdd = lazy(() => import('@/pages/documents/new'))
+const DocumentEdit = lazy(() => import('@/pages/documents/edit'))
+const Evaluations = lazy(() => import('@/pages/evaluations'))
+const EvaluationAdd = lazy(() => import('@/pages/evaluations/new'))
+const EvaluationEdit = lazy(() => import('@/pages/evaluations/edit'))
+const Requests = lazy(() => import('@/pages/requests'))
+const RequestAdd = lazy(() => import('@/pages/requests/new'))
+const RequestEdit = lazy(() => import('@/pages/requests/edit'))
+const Schedules = lazy(() => import('@/pages/schedules'))
+const ScheduleAdd = lazy(() => import('@/pages/schedules/new'))
+const ScheduleEdit = lazy(() => import('@/pages/schedules/edit'))
+const Reports = lazy(() => import('@/pages/reports'))
+const Users = lazy(() => import('@/pages/users'))
+const UserAdd = lazy(() => import('@/pages/users/new'))
+const UserEdit = lazy(() => import('@/pages/users/edit'))
+const Groups = lazy(() => import('@/pages/groups'))
+const Announcements = lazy(() => import('@/pages/announcements'))
+const AnnouncementAdd = lazy(() => import('@/pages/announcements/new'))
+const AnnouncementEdit = lazy(() => import('@/pages/announcements/edit'))
+const Distribution = lazy(() => import('@/pages/distribution'))
+const DistributionAdd = lazy(() => import('@/pages/distribution/new'))
+const DistributionEdit = lazy(() => import('@/pages/distribution/edit'))
 
-// Supervisor Routes (lazy)
-const SupervisorDashboard = lazy(() => import('@/pages/supervisor/SupervisorDashboard'))
-const SupervisorRequests = lazy(() => import('@/pages/supervisor/SupervisorRequests'))
-const SupervisorProjects = lazy(() => import('@/pages/supervisor/SupervisorProjects'))
-const SupervisorEvaluations = lazy(() => import('@/pages/supervisor/SupervisorEvaluations'))
-const SupervisorNotes = lazy(() => import('@/pages/supervisor/SupervisorNotes'))
-const SupervisorSchedule = lazy(() => import('@/pages/supervisor/SupervisorSchedule'))
-
-// Committee Routes (lazy)
-const CommitteeDashboard = lazy(() => import('@/pages/committee/CommitteeDashboard'))
-const CommitteeProposals = lazy(() => import('@/pages/committee/CommitteeProposals'))
-const CommitteeProjects = lazy(() => import('@/pages/committee/CommitteeProjects'))
-const CommitteeSchedules = lazy(() => import('@/pages/committee/CommitteeSchedules'))
-const CommitteeReports = lazy(() => import('@/pages/committee/CommitteeReports'))
-const CommitteeAnnouncements = lazy(() => import('@/pages/committee/CommitteeAnnouncements'))
-const CommitteeDistribution = lazy(() => import('@/pages/committee/CommitteeDistribution'))
-
-// Discussion Routes (lazy)
-const DiscussionDashboard = lazy(() => import('@/pages/discussion/DiscussionDashboard'))
-const DiscussionProjects = lazy(() => import('@/pages/discussion/DiscussionProjects'))
-const DiscussionEvaluations = lazy(() => import('@/pages/discussion/DiscussionEvaluations'))
-
-// Admin Routes (lazy)
-const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'))
-const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'))
-const AdminReports = lazy(() => import('@/pages/admin/AdminReports'))
-
-// Demo Routes (lazy)
+// Demo Route
 const ComponentsDemo = lazy(() => import('@/pages/ComponentsDemo'))
-const SupervisorProposals = lazy(() => import('@/pages/supervisor/SupervisorProposals'))
 
 const AppRoutes: React.FC = () => {
-  const { isAuthenticated, isLoading, user } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return <LoadingSpinner />
@@ -69,80 +65,330 @@ const AppRoutes: React.FC = () => {
     <MainLayout>
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
-        {/* Student Routes */}
-        {user?.role === 'student' && (
-          <>
-            <Route path="/" element={<StudentDashboard />} />
-            <Route path="/dashboard" element={<StudentDashboard />} />
-            <Route path="/projects" element={<StudentProjects />} />
-            <Route path="/proposals" element={<StudentProposals />} />
-            <Route path="/student/proposals/my" element={<StudentProposals />} />
-            <Route path="/student/proposals/group" element={<StudentProposals />} />
-            <Route path="/student/proposals/approved" element={<StudentProposals />} />
-            <Route path="/requests" element={<StudentRequests />} />
-            <Route path="/documents" element={<StudentDocuments />} />
-            <Route path="/group-management" element={<StudentGroupManagement />} />
-            <Route path="/grades" element={<StudentGrades />} />
-          </>
-        )}
+          {/* Dashboard - All roles */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee', 'discussion', 'admin']}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee', 'discussion', 'admin']}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Supervisor Routes */}
-        {user?.role === 'supervisor' && (
-          <>
-            <Route path="/" element={<SupervisorDashboard />} />
-            <Route path="/dashboard" element={<SupervisorDashboard />} />
-            <Route path="/requests" element={<SupervisorRequests />} />
-            <Route path="/projects" element={<SupervisorProjects />} />
-            <Route path="/proposals" element={<SupervisorProposals />} />
-            <Route path="/supervisor/documents" element={<SupervisorDashboard />} />
-            <Route path="/supervisor/grades" element={<SupervisorDashboard />} />
-            <Route path="/supervisor/evaluations" element={<SupervisorEvaluations />} />
-            <Route path="/supervisor/notes" element={<SupervisorNotes />} />
-            <Route path="/supervisor/schedule" element={<SupervisorSchedule />} />
-          </>
-        )}
+          {/* Projects - Student, Supervisor, Committee, Discussion */}
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee', 'discussion']}>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/new"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ProjectAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/projects/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+                <ProjectEdit />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Committee Routes */}
-        {user?.role === 'committee' && (
-          <>
-            <Route path="/" element={<CommitteeDashboard />} />
-            <Route path="/dashboard" element={<CommitteeDashboard />} />
-            <Route path="/proposals" element={<CommitteeProposals />} />
-            <Route path="/projects" element={<CommitteeProjects />} />
-            <Route path="/schedules" element={<CommitteeSchedules />} />
-            <Route path="/committee-reports" element={<CommitteeReports />} />
-            <Route path="/announcements" element={<CommitteeAnnouncements />} />
-            <Route path="/distribution" element={<CommitteeDistribution />} />
-          </>
-        )}
+          {/* Proposals - Student, Supervisor, Committee */}
+          <Route
+            path="/proposals"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee']}>
+                <Proposals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/proposals/new"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ProposalAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/proposals/my"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <Proposals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/proposals/group"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <Proposals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/proposals/approved"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <Proposals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/proposals/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <ProposalEdit />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Discussion Routes */}
-        {user?.role === 'discussion' && (
-          <>
-            <Route path="/" element={<DiscussionDashboard />} />
-            <Route path="/dashboard" element={<DiscussionDashboard />} />
-            <Route path="/projects" element={<DiscussionProjects />} />
-            <Route path="/evaluations" element={<DiscussionEvaluations />} />
-          </>
-        )}
+          {/* Documents - Student, Supervisor, Committee */}
+          <Route
+            path="/documents"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee']}>
+                <Documents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/new"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+                <DocumentAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/documents/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+                <DocumentEdit />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Admin Routes */}
-        {user?.role === 'admin' && (
-          <>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/dashboard" element={<AdminDashboard />} />
-            <Route path="/users" element={<AdminUsers />} />
-            <Route path="/reports" element={<AdminReports />} />
-            <Route path="/permissions" element={<AdminUsers />} />
-            <Route path="/components-demo" element={<ComponentsDemo />} />
-          </>
-        )}
+          {/* Evaluations - Student, Supervisor, Discussion */}
+          <Route
+            path="/evaluations"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'discussion']}>
+                <Evaluations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/evaluations/new"
+            element={
+              <ProtectedRoute allowedRoles={['supervisor', 'discussion']}>
+                <EvaluationAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/evaluations/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['supervisor', 'discussion']}>
+                <EvaluationEdit />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Demo Route - Available for all roles */}
-        <Route path="/components-demo" element={<ComponentsDemo />} />
+          {/* Requests - Student, Supervisor */}
+          <Route
+            path="/requests"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+                <Requests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/requests/new"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <RequestAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/requests/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <RequestEdit />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Schedules - Supervisor, Committee */}
+          <Route
+            path="/schedules"
+            element={
+              <ProtectedRoute allowedRoles={['supervisor', 'committee']}>
+                <Schedules />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/schedules/new"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <ScheduleAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/schedules/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <ScheduleEdit />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Reports - Committee, Admin */}
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute allowedRoles={['committee', 'admin']}>
+                <Reports />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Users - Admin */}
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Users />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/new"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <UserAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <UserEdit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/permissions"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Users />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Groups - Student, Supervisor */}
+          <Route
+            path="/groups"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+                <Groups />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/group-management"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <Groups />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Announcements - Committee */}
+          <Route
+            path="/announcements"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <Announcements />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/announcements/new"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <AnnouncementAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/announcements/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <AnnouncementEdit />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Distribution - Committee */}
+          <Route
+            path="/distribution"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <Distribution />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/distribution/new"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <DistributionAdd />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/distribution/:id/edit"
+            element={
+              <ProtectedRoute allowedRoles={['committee']}>
+                <DistributionEdit />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Demo Route - Available for all roles */}
+          <Route
+            path="/components-demo"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee', 'discussion', 'admin']}>
+                <ComponentsDemo />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </MainLayout>
