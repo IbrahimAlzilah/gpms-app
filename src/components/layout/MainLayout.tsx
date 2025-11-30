@@ -10,9 +10,6 @@ interface MainLayoutProps {
   children: ReactNode
 }
 
-const EXPANDED_WIDTH = 256 // 64 tailwind
-const COLLAPSED_WIDTH = 80
-
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user } = useAuth()
   const { currentLanguage } = useLanguage()
@@ -35,7 +32,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     localStorage.setItem('gpms:sidebar-collapsed', isCollapsed ? '1' : '0')
   }, [isCollapsed])
 
-  // Responsive breakpoint tracking (match Tailwind lg: 1024px)
+  // Responsive breakpoint tracking
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023.5px)')
     const update = () => setIsMobile(mq.matches)
@@ -57,8 +54,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return null
   }
 
-  const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH
-
   const handleMenuClick = () => {
     if (isMobile) {
       setIsDrawerOpen(true)
@@ -70,38 +65,42 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const closeDrawer = () => setIsDrawerOpen(false)
 
   return (
-    <div className="min-h-screen relative flex flex-row flex-1 h-full w-full bg-gray-50">
-      {/* 1. Sidebar (Desktop sticky / Mobile fixed Drawer) */}
-      <div
-        className={cn(
-          'lg:block fixed lg:sticky inset-y-0 start-0 z-[200] bg-white border-gray-200 transition-all duration-300 ease-in-out shadow-sm',
-          isMobile && isDrawerOpen ? 'translate-x-0' : (isMobile ? 'invisible translate-x-[-100%]' : '') // Ensure mobile drawer visibility logic is correct
-        )}
-        style={{
-          blockSize: '100dvh',
-          width: isMobile ? EXPANDED_WIDTH : sidebarWidth,
-          // Mobile drawer state
-          transform: isMobile ? (isDrawerOpen ? 'translateX(0)' : `translateX(${isRTL ? '100%' : '-100%'})`) : undefined,
-        }}
-      >
-        <Sidebar collapsed={isMobile ? false : isCollapsed}
-          onToggle={isMobile ? closeDrawer : () => setIsCollapsed(!isCollapsed)}
-        />
-      </div>
-
-      {/* 2. Mobile Drawer Overlay (Only visible on Mobile when drawer is open) */}
+    <div className="flex h-screen w-full overflow-hidden bg-gray-50/50 dark:bg-gray-900">
+      {/* Sidebar Backdrop (Mobile) */}
       {isMobile && isDrawerOpen && (
-        <div className="fixed inset-0 z-[150] bg-black/40 lg:hidden" onClick={closeDrawer} />
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden"
+          onClick={closeDrawer}
+        />
       )}
 
-      {/* 3. Main content */}
-      <div className="min-h-screen relative flex flex-col flex-auto h-full max-w-full">
-        {/* Header */}
-        <Header onMenuClick={handleMenuClick} sidebarWidth={isMobile ? 0 : sidebarWidth} />
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-950 lg:static',
+          isMobile 
+            ? (isDrawerOpen ? (isRTL ? 'right-0' : 'left-0') : (isRTL ? '-right-full' : '-left-full'))
+            : (isCollapsed ? 'w-20' : 'w-64'),
+          isMobile && 'w-64'
+        )}
+      >
+        <Sidebar 
+          collapsed={isMobile ? false : isCollapsed}
+          onToggle={isMobile ? closeDrawer : () => setIsCollapsed(!isCollapsed)}
+          onClose={isMobile ? closeDrawer : undefined}
+        />
+      </aside>
 
-        {/* Page Content */}
-        <main className="transition-width relative h-full w-full flex-1 overflow-auto p-4 lg:p-6">
-          <div className="max-w-8xl mx-auto">
+      {/* Main Content Wrapper */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header 
+          onMenuClick={handleMenuClick} 
+          sidebarWidth={0} // Not needed with flex layout
+        />
+
+        {/* Scrollable Content Area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scroll-smooth">
+          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             {children}
           </div>
         </main>

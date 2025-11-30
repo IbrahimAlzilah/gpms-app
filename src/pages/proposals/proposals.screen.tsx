@@ -287,14 +287,21 @@ const ProposalsScreen: React.FC<ProposalsScreenProps> = ({
                             <button
                                 onClick={async () => {
                                     try {
-                                        await approveProposal(proposal.id)
+                                        const approvedProposal = await approveProposal(proposal.id)
+                                        addNotification({
+                                          title: 'تم قبول المقترح',
+                                          message: `تم قبول المقترح "${proposal.title}" وتحويله لمشروع معتمد`,
+                                          type: 'success',
+                                          category: 'proposal'
+                                        })
                                         setProposals(prev => prev.map(p =>
                                             p.id === proposal.id ? { ...p, status: 'approved' } : p
                                         ))
                                         addNotification({
                                             title: 'تمت الموافقة',
-                                            message: 'تمت الموافقة على المقترح بنجاح',
-                                            type: 'success'
+                                            message: `تم قبول المقترح "${proposal.title}" وتحويله لمشروع معتمد. سيتم إشعار مقدم المقترح.`,
+                                            type: 'success',
+                                            category: 'proposal'
                                         })
                                     } catch (err) {
                                         console.error('Error approving proposal:', err)
@@ -326,14 +333,24 @@ const ProposalsScreen: React.FC<ProposalsScreenProps> = ({
                             <button
                                 onClick={async () => {
                                     try {
-                                        await rejectProposal(proposal.id)
+                                        const reason = prompt('يرجى إدخال سبب الرفض:')
+                                        if (reason) {
+                                          const rejectedProposal = await rejectProposal(proposal.id, reason)
+                                          addNotification({
+                                            title: 'تم رفض المقترح',
+                                            message: `تم رفض المقترح "${proposal.title}"`,
+                                            type: 'info',
+                                            category: 'proposal'
+                                          })
+                                        }
                                         setProposals(prev => prev.map(p =>
                                             p.id === proposal.id ? { ...p, status: 'rejected' } : p
                                         ))
                                         addNotification({
                                             title: 'تم الرفض',
-                                            message: 'تم رفض المقترح بنجاح',
-                                            type: 'success'
+                                            message: `تم رفض المقترح "${proposal.title}". سيتم إشعار مقدم المقترح بالقرار.`,
+                                            type: 'info',
+                                            category: 'proposal'
                                         })
                                     } catch (err) {
                                         console.error('Error rejecting proposal:', err)
@@ -622,8 +639,9 @@ const ProposalsScreen: React.FC<ProposalsScreenProps> = ({
                             ))
                             addNotification({
                                 title: 'تم إرسال طلب التعديل',
-                                message: 'تم إرسال طلب التعديل للمقدم بنجاح. سيتم إشعاره لإعادة التقديم بعد التعديلات.',
-                                type: 'success'
+                                message: `تم إرسال طلب التعديل للمقترح "${proposalForModification.title}". سيتم إشعار مقدم المقترح لإعادة التقديم بعد التعديلات.`,
+                                type: 'success',
+                                category: 'proposal'
                             })
                             setModificationModalOpen(false)
                             setProposalForModification(null)

@@ -73,7 +73,7 @@ const DistributionScreen: React.FC = () => {
   useEffect(() => {
     const loadProjectsReadyForDefense = async () => {
       if (user?.role !== 'committee') return
-      
+
       setIsLoadingProjects(true)
       try {
         const projects = await getProjectsReadyForDefense()
@@ -268,10 +268,10 @@ const DistributionScreen: React.FC = () => {
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onStatusChange={setStatusFilter}
-                    onPriorityChange={() => {}}
+                    onPriorityChange={() => { }}
                     onSortChange={setSortBy}
                     onSortOrderChange={setSortOrder}
-                    onApply={() => {}}
+                    onApply={() => { }}
                     onClear={handleFilterClear}
                   />
                 }
@@ -325,20 +325,20 @@ const DistributionScreen: React.FC = () => {
                     </div>
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-sm text-gray-600">
-                        <Users size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Users size={16} className="me-2" />
                         {committee.members.length} عضو
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
-                        <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Calendar size={16} className="me-2" />
                         {committee.scheduledDate}
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
-                        <Clock size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Clock size={16} className="me-2" />
                         {committee.scheduledTime}
                       </div>
                       {committee.location && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <MapPin size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <MapPin size={16} className="me-2" />
                           {committee.location}
                         </div>
                       )}

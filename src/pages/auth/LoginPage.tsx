@@ -85,9 +85,9 @@ const LoginPage: React.FC = () => {
 
           {/* Error Message */}
           {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
           )}
 
           {/* Login Form */}
@@ -148,7 +148,7 @@ const LoginPage: React.FC = () => {
                   // onChange={handleInputChange}
                   className="h-4 w-4 text-primary-dark focus:ring-primary-light border-gray-300 rounded"
                 />
-                <label htmlFor="rememberMe" className="ml-2 rtl:ml-0 rtl:mr-2 block text-sm text-gray-700">
+                <label htmlFor="rememberMe" className="me-2 block text-sm text-gray-700">
                   {t('auth.rememberMe')}
                 </label>
               </div>
@@ -195,7 +195,7 @@ const LoginPage: React.FC = () => {
                   className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
                 >
                   <span className="font-medium">{t(`common.${account.role}`)}</span>
-                  <span className="text-gray-400 ml-2 rtl:ml-0 rtl:mr-2">
+                  <span className="text-gray-400 me-2">
                     ({account.username} / {account.password})
                   </span>
                 </button>
@@ -206,7 +206,7 @@ const LoginPage: React.FC = () => {
 
         {/* Footer */}
         <div className="text-center mt-6 text-white/80 text-sm">
-        <p>{t(`auth.copyright`) + ' © 2025 GPMS'}</p>
+          <p>{t(`auth.copyright`) + ' © 2025 GPMS'}</p>
         </div>
       </div>
     </div>

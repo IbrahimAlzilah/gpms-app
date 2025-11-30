@@ -126,16 +126,17 @@ export async function calculateAndSaveFinalGrade(
 
 /**
  * Approve final grade by committee
+ * This will notify the student when the grade is approved
  */
 export async function approveFinalGrade(
   projectId: string,
   approvedBy: string,
   comments?: string
-): Promise<GradeApproval> {
-  const res = await apiRequest<GradeApproval>(
+): Promise<GradeApproval & { studentId?: string; projectTitle?: string }> {
+  const res = await apiRequest<GradeApproval & { studentId?: string; projectTitle?: string }>(
     `/grades/projects/${projectId}/approve`,
     "POST",
-    { approvedBy, comments },
+    { approvedBy, comments, notifyStudent: true },
     {
       mockData: {
         gradeId: `grade-${projectId}`,
@@ -143,7 +144,36 @@ export async function approveFinalGrade(
         approvedBy,
         approvedAt: new Date().toISOString(),
         comments,
-      } as GradeApproval,
+        studentId: 'student-1',
+        projectTitle: 'مشروع التخرج'
+      } as GradeApproval & { studentId?: string; projectTitle?: string },
+    }
+  );
+  return res.data;
+}
+
+/**
+ * Reject final grade (request revision)
+ */
+export async function rejectFinalGrade(
+  projectId: string,
+  rejectedBy: string,
+  reason: string
+): Promise<GradeApproval & { studentId?: string; projectTitle?: string }> {
+  const res = await apiRequest<GradeApproval & { studentId?: string; projectTitle?: string }>(
+    `/grades/projects/${projectId}/reject`,
+    "POST",
+    { rejectedBy, reason, notifyStudent: true },
+    {
+      mockData: {
+        gradeId: `grade-${projectId}`,
+        approved: false,
+        approvedBy: rejectedBy,
+        approvedAt: new Date().toISOString(),
+        comments: reason,
+        studentId: 'student-1',
+        projectTitle: 'مشروع التخرج'
+      } as GradeApproval & { studentId?: string; projectTitle?: string },
     }
   );
   return res.data;

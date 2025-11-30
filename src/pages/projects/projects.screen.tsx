@@ -656,7 +656,7 @@ const ProjectsScreen: React.FC = () => {
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-blue-900 flex items-center">
-                      <MessageSquare size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                      <MessageSquare size={16} className="me-2" />
                       ملاحظات المشرف
                     </h4>
                     {currentProject.lastMeetingDate && (
@@ -682,7 +682,7 @@ const ProjectsScreen: React.FC = () => {
               {/* Timeline */}
               <div className="mb-6">
                 <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                  <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                  <Calendar size={16} className="me-2" />
                   الجدول الزمني
                 </h4>
                 <div className="space-y-3">
@@ -736,9 +736,9 @@ const ProjectsScreen: React.FC = () => {
                           >
                             <div className="flex items-center">
                               {milestone.completed ? (
-                                <CheckCircle size={16} className="text-green-600 ml-2 rtl:ml-0 rtl:mr-2" />
+                                <CheckCircle size={16} className="text-green-600 me-2" />
                               ) : (
-                                <div className="w-4 h-4 border-2 border-gray-400 rounded-full ml-2 rtl:ml-0 rtl:mr-2" />
+                                <div className="w-4 h-4 border-2 border-gray-400 rounded-full me-2" />
                               )}
                               <span className={`text-sm ${milestone.completed ? 'text-green-800 line-through' : 'text-gray-700'}`}>
                                 {milestone.title}
@@ -812,37 +812,37 @@ const ProjectsScreen: React.FC = () => {
                     <div className="space-y-3 mb-4">
                       {project.supervisor && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <User size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <User size={16} className="me-2" />
                           <span>{project.supervisor}</span>
                         </div>
                       )}
                       {user?.role === 'student' && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <Users size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <Users size={16} className="me-2" />
                           <span>{(project.students || project.teamMembers || []).length} طالب مسجل</span>
                         </div>
                       )}
                       {user?.role === 'supervisor' && project.teamMembers && project.teamMembers.length > 0 && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <Users size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <Users size={16} className="me-2" />
                           <span>{project.teamMembers.length} طالب</span>
                         </div>
                       )}
                       {project.department && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <FolderOpen size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <FolderOpen size={16} className="me-2" />
                           <span>{project.department}</span>
                         </div>
                       )}
                       {project.startDate && project.endDate && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <Calendar size={16} className="me-2" />
                           <span>{new Date(project.startDate).toLocaleDateString('ar')} - {new Date(project.endDate).toLocaleDateString('ar')}</span>
                         </div>
                       )}
                       {user?.role === 'supervisor' && project.nextMeetingDate && (
                         <div className="flex items-center text-sm text-blue-600">
-                          <Clock size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <Clock size={16} className="me-2" />
                           <span>لقاء قادم: {new Date(project.nextMeetingDate).toLocaleDateString('ar')}</span>
                         </div>
                       )}

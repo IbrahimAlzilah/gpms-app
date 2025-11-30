@@ -10,12 +10,15 @@ import AdvancedFilter from '@/components/ui/AdvancedFilter'
 import Modal from '@/components/ui/Modal'
 import { ViewModeToggle } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
-import { Eye, Star, Award, SlidersHorizontal, Download, Printer, FileText } from 'lucide-react'
+import { Eye, Star, Award, SlidersHorizontal, Download, Printer, FileText, CheckCircle, AlertCircle } from 'lucide-react'
 import { Evaluation } from './schema'
 import { useNavigate } from 'react-router-dom'
 import { useEvaluations } from './evaluations.hook'
 import FinalEvaluationModal from '@/components/forms/FinalEvaluationModal'
 import { useNotifications } from '@/context/NotificationContext'
+import { getStudentApprovedGrades, getProjectFinalGrade, getPendingGradeApprovals, FinalGradeCalculation } from '@/services/grades.service'
+import { useEffect } from 'react'
+import GradeApprovalModal from '@/components/forms/GradeApprovalModal'
 
 const EvaluationsScreen: React.FC = () => {
   const { t } = useLanguage()
@@ -33,6 +36,11 @@ const EvaluationsScreen: React.FC = () => {
   const [evaluationModalOpen, setEvaluationModalOpen] = useState(false)
   const [selectedEvaluation, setSelectedEvaluation] = useState<Evaluation | null>(null)
   const { addNotification } = useNotifications()
+  const [approvedGrades, setApprovedGrades] = useState<FinalGradeCalculation[]>([])
+  const [isLoadingGrades, setIsLoadingGrades] = useState(false)
+  const [pendingApprovals, setPendingApprovals] = useState<Array<FinalGradeCalculation & { projectId: string; studentId: string; projectTitle?: string; studentName?: string }>>([])
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false)
+  const [selectedApproval, setSelectedApproval] = useState<{ projectId: string; projectTitle: string; studentId: string; studentName: string; supervisorScore?: number; discussionScore?: number } | null>(null)
 
   const statusOptions = [
     { value: 'all', label: 'جميع الحالات' },
@@ -64,6 +72,24 @@ const EvaluationsScreen: React.FC = () => {
     { value: 'status', label: 'الحالة' },
     { value: 'score', label: 'الدرجة' }
   ]
+
+  // Load approved grades for students
+  useEffect(() => {
+    const loadApprovedGrades = async () => {
+      if (user?.role === 'student' && user?.id) {
+        setIsLoadingGrades(true)
+        try {
+          const grades = await getStudentApprovedGrades(user.id)
+          setApprovedGrades(grades)
+        } catch (error) {
+          console.error('Error loading approved grades:', error)
+        } finally {
+          setIsLoadingGrades(false)
+        }
+      }
+    }
+    loadApprovedGrades()
+  }, [user])
 
   const filteredEvaluations = useMemo(() => {
     return evaluations.filter(evaluation => {
@@ -203,14 +229,136 @@ const EvaluationsScreen: React.FC = () => {
         <CardContent>
           {evaluationsLoading ? (
             <div className="text-center py-12">جاري التحميل...</div>
+          ) : user?.role === 'committee' && pendingApprovals.length > 0 ? (
+            // Committee - Pending Grade Approvals
+            <div className="space-y-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <AlertCircle className="w-5 h-5 me-2 text-yellow-600" />
+                  الدرجات المعلقة للاعتماد ({pendingApprovals.length})
+                </h3>
+                <div className="space-y-4">
+                  {pendingApprovals.map((approval) => (
+                    <div key={approval.gradeId || approval.projectId} className="bg-white rounded-lg p-4 border border-yellow-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{approval.projectTitle || 'مشروع التخرج'}</h4>
+                          <p className="text-sm text-gray-600">الطالب: {approval.studentName || approval.studentId}</p>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            setSelectedApproval({
+                              projectId: approval.projectId,
+                              projectTitle: approval.projectTitle || 'مشروع التخرج',
+                              studentId: approval.studentId,
+                              studentName: approval.studentName || approval.studentId,
+                              supervisorScore: approval.supervisorScore,
+                              discussionScore: approval.discussionScore
+                            })
+                            setApprovalModalOpen(true)
+                          }}
+                          className="bg-gpms-dark text-white hover:bg-gpms-light"
+                        >
+                          <CheckCircle className="w-4 h-4 ml-1 rtl:ml-0 rtl:mr-1" />
+                          اعتماد الدرجة
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-200">
+                        <div>
+                          <p className="text-sm text-gray-600">درجة المشرف</p>
+                          <p className="text-lg font-semibold text-gray-900">{approval.supervisorScore.toFixed(1)}</p>
+                          <p className="text-xs text-gray-500">({(approval.weights.supervisorWeight * 100).toFixed(0)}%)</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">درجة المناقشة</p>
+                          <p className="text-lg font-semibold text-gray-900">{approval.discussionScore.toFixed(1)}</p>
+                          <p className="text-xs text-gray-500">({(approval.weights.discussionWeight * 100).toFixed(0)}%)</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">الدرجة النهائية</p>
+                          <p className={cn(
+                            "text-2xl font-bold",
+                            approval.finalScore >= 90 ? "text-green-600" :
+                            approval.finalScore >= 80 ? "text-blue-600" :
+                            approval.finalScore >= 70 ? "text-yellow-600" :
+                            "text-red-600"
+                          )}>
+                            {approval.finalScore.toFixed(2)}
+                          </p>
+                          <p className="text-sm font-medium text-gray-700">{approval.finalGrade}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : user?.role === 'student' ? (
             // Student Grades View
             <div className="space-y-6">
+              {/* Approved Final Grades */}
+              {isLoadingGrades ? (
+                <div className="text-center py-4">جاري تحميل الدرجات المعتمدة...</div>
+              ) : approvedGrades.length > 0 ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <CheckCircle className="w-5 h-5 me-2 text-green-600" />
+                    الدرجات المعتمدة النهائية
+                  </h3>
+                  <div className="space-y-4">
+                    {approvedGrades.map((grade, index) => (
+                      <div key={index} className="bg-white rounded-lg p-4 border border-green-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">الدرجة النهائية المعتمدة</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              تم الاعتماد في: {grade.approvedAt ? new Date(grade.approvedAt).toLocaleDateString('ar-SA') : 'غير محدد'}
+                            </p>
+                            {grade.approvedBy && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                معتمد من: {grade.approvedBy}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-green-600">
+                              {grade.finalScore.toFixed(1)}
+                            </div>
+                            <div className="text-lg font-semibold text-gray-700 mt-1">
+                              {grade.finalGrade}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+                          <div>
+                            <p className="text-sm text-gray-600">درجة المشرف</p>
+                            <p className="text-lg font-semibold text-gray-900">{grade.supervisorScore.toFixed(1)}</p>
+                            <p className="text-xs text-gray-500">({(grade.weights.supervisorWeight * 100).toFixed(0)}%)</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">درجة لجنة المناقشة</p>
+                            <p className="text-lg font-semibold text-gray-900">{grade.discussionScore.toFixed(1)}</p>
+                            <p className="text-xs text-gray-500">({(grade.weights.discussionWeight * 100).toFixed(0)}%)</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : filteredEvaluations.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    <AlertCircle className="w-4 h-4 inline ml-1 rtl:ml-0 rtl:mr-1" />
+                    النتائج لم تعتمد بعد من لجنة المشاريع
+                  </p>
+                </div>
+              )}
+
               {/* Final Grades Summary */}
               {filteredEvaluations.length > 0 && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                    <Award className="w-5 h-5 ml-2 rtl:ml-0 rtl:mr-2 text-yellow-500" />
+                    <Award className="w-5 h-5 me-2 text-yellow-500" />
                     ملخص الدرجات النهائية
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -565,6 +713,34 @@ const EvaluationsScreen: React.FC = () => {
             supervisor: selectedEvaluation.supervisor || '',
             defenseDate: selectedEvaluation.defenseDate || new Date().toISOString()
           } : undefined}
+        />
+      )}
+
+      {/* Grade Approval Modal for Committee */}
+      {selectedApproval && (
+        <GradeApprovalModal
+          isOpen={approvalModalOpen}
+          onClose={() => {
+            setApprovalModalOpen(false)
+            setSelectedApproval(null)
+          }}
+          projectId={selectedApproval.projectId}
+          projectTitle={selectedApproval.projectTitle}
+          studentId={selectedApproval.studentId}
+          studentName={selectedApproval.studentName}
+          supervisorScore={selectedApproval.supervisorScore}
+          discussionScore={selectedApproval.discussionScore}
+          onSuccess={async () => {
+            // Reload pending approvals
+            if (user?.role === 'committee') {
+              try {
+                const pending = await getPendingGradeApprovals()
+                setPendingApprovals(pending)
+              } catch (error) {
+                console.error('Error reloading pending approvals:', error)
+              }
+            }
+          }}
         />
       )}
     </div>

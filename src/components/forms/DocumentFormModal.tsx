@@ -354,6 +354,30 @@ const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
       <div className="max-h-[80vh] overflow-y-auto">
         <Form onSubmit={handleSubmit}>
           <div className="space-y-6">
+            {/* Period Status Alert */}
+            {isCheckingPeriod ? (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                <span>جاري التحقق من فترة التسليم...</span>
+              </div>
+            ) : periodCheck && !periodCheck.isOpen && user?.role === 'student' ? (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">فترة التسليم مغلقة</p>
+                  <p className="text-sm mt-1">{periodCheck.message || 'فترة تسليم الوثائق غير متاحة حالياً'}</p>
+                </div>
+              </div>
+            ) : periodCheck && periodCheck.isOpen && user?.role === 'student' ? (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-start gap-2">
+                <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">فترة التسليم مفتوحة</p>
+                  <p className="text-sm mt-1">يمكنك الآن رفع الوثائق المطلوبة</p>
+                </div>
+              </div>
+            ) : null}
+
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormGroup>
@@ -572,7 +596,11 @@ const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
                 <XCircle className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                 إلغاء
               </Button>
-              <Button type="submit" loading={isLoading}>
+              <Button 
+                type="submit" 
+                loading={isLoading}
+                disabled={periodCheck !== null && !periodCheck.isOpen && user?.role === 'student'}
+              >
                 <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                 {editData ? 'تحديث المستند' : 'رفع المستند'}
               </Button>

@@ -64,4 +64,33 @@ export async function deleteUser(id: string): Promise<void> {
   })
 }
 
+export async function toggleUserStatus(id: string, status: 'active' | 'inactive' | 'pending' | 'suspended'): Promise<User> {
+  const res = await apiRequest<User>(`/users/${id}/status`, 'PATCH', { status }, {
+    mockData: {
+      id,
+      status,
+    } as User,
+  })
+  return res.data
+}
+
+export async function updateUserPermissions(id: string, permissions: string[]): Promise<User> {
+  const res = await apiRequest<User>(`/users/${id}/permissions`, 'PUT', { permissions }, {
+    mockData: {
+      id,
+      permissions,
+    } as User,
+  })
+  return res.data
+}
+
+export async function updateUserRole(id: string, role: 'student' | 'supervisor' | 'committee' | 'discussion' | 'admin'): Promise<User> {
+  const res = await apiRequest<User>(`/users/${id}/role`, 'PATCH', { role }, {
+    mockData: {
+      id,
+      role,
+    } as User,
+  })
+  return res.data
+}
 

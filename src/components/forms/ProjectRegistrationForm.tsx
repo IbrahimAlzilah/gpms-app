@@ -5,8 +5,9 @@ import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { Project } from '@/pages/projects/schema'
 import { registerForProject, ProjectRegistrationRequest, getStudentRegistrations } from '@/services/project-registration.service'
-import { checkStudentEligibility, checkStudentProjectRegistration } from '@/services/students.service'
-import { X } from 'lucide-react'
+import { checkStudentEligibility, checkStudentProjectRegistration, StudentEligibility } from '@/services/students.service'
+import { X, CheckCircle, XCircle, Clock, Award, BookOpen, AlertCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ProjectRegistrationFormProps {
   isOpen: boolean
@@ -27,7 +28,7 @@ const ProjectRegistrationForm: React.FC<ProjectRegistrationFormProps> = ({
   const [isLoading, setIsLoading] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [errors, setErrors] = useState<{ reason?: string; general?: string }>({})
-  const [eligibilityCheck, setEligibilityCheck] = useState<{ checked: boolean; eligible: boolean; message?: string }>({ checked: false, eligible: true })
+  const [eligibilityCheck, setEligibilityCheck] = useState<{ checked: boolean; eligible: boolean; message?: string; details?: StudentEligibility['details'] }>({ checked: false, eligible: true })
 
   React.useEffect(() => {
     const checkEligibility = async () => {
@@ -67,7 +68,8 @@ const ProjectRegistrationForm: React.FC<ProjectRegistrationFormProps> = ({
         setEligibilityCheck({
           checked: true,
           eligible: eligibility.eligible,
-          message: eligibility.reason
+          message: eligibility.reason,
+          details: eligibility.details
         })
       } catch (error) {
         console.error('Error checking eligibility:', error)
@@ -201,17 +203,116 @@ const ProjectRegistrationForm: React.FC<ProjectRegistrationFormProps> = ({
           </div>
         )}
 
-        {eligibilityCheck.checked && !eligibilityCheck.eligible && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
-            <p className="font-medium mb-1">غير مؤهل للتسجيل:</p>
-            <p>{eligibilityCheck.message || 'لا يمكنك التسجيل في هذا المشروع'}</p>
-          </div>
-        )}
+        {/* Eligibility Check Results */}
+        {eligibilityCheck.checked && eligibilityCheck.details && (
+          <div className={cn(
+            "border rounded-lg p-4 space-y-3",
+            eligibilityCheck.eligible 
+              ? "bg-green-50 border-green-200" 
+              : "bg-red-50 border-red-200"
+          )}>
+            <div className="flex items-center gap-2 mb-3">
+              {eligibilityCheck.eligible ? (
+                <>
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <h3 className="font-semibold text-green-900">مؤهل للتسجيل</h3>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-5 h-5 text-red-600" />
+                  <h3 className="font-semibold text-red-900">غير مؤهل للتسجيل</h3>
+                </>
+              )}
+            </div>
 
-        {eligibilityCheck.checked && eligibilityCheck.eligible && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
-            <p className="font-medium mb-1">✓ مؤهل للتسجيل</p>
-            <p>يمكنك المتابعة في إرسال طلب التسجيل</p>
+            {eligibilityCheck.message && (
+              <div className={cn(
+                "p-3 rounded-lg text-sm",
+                eligibilityCheck.eligible ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+              )}>
+                <p className="whitespace-pre-line">{eligibilityCheck.message}</p>
+              </div>
+            )}
+
+            {/* Detailed Eligibility Information */}
+            <div className="space-y-2 text-sm">
+              {/* Credit Hours Check */}
+              <div className="flex items-center justify-between p-2 bg-white rounded">
+                <div className="flex items-center gap-2">
+                  {eligibilityCheck.details.hasEnoughHours ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="font-medium">الساعات المطلوبة</span>
+                </div>
+                {eligibilityCheck.details.hoursInfo && (
+                  <div className="text-gray-600">
+                    <span className={eligibilityCheck.details.hasEnoughHours ? "text-green-700" : "text-red-700"}>
+                      {eligibilityCheck.details.hoursInfo.completed}/{eligibilityCheck.details.hoursInfo.required}
+                    </span>
+                    {!eligibilityCheck.details.hasEnoughHours && (
+                      <span className="text-red-600 mr-2">({eligibilityCheck.details.hoursInfo.remaining} ساعة ناقصة)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* GPA Check */}
+              <div className="flex items-center justify-between p-2 bg-white rounded">
+                <div className="flex items-center gap-2">
+                  {eligibilityCheck.details.hasMinimumGPA ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="font-medium">المعدل التراكمي</span>
+                </div>
+                {eligibilityCheck.details.gpaInfo && (
+                  <div className="text-gray-600">
+                    <span className={eligibilityCheck.details.hasMinimumGPA ? "text-green-700" : "text-red-700"}>
+                      {eligibilityCheck.details.gpaInfo.current.toFixed(2)}
+                    </span>
+                    <span className="text-gray-500 mr-1">/ الحد الأدنى: {eligibilityCheck.details.gpaInfo.minimum}</span>
+                    {!eligibilityCheck.details.hasMinimumGPA && (
+                      <span className="text-red-600 mr-2">({Math.abs(eligibilityCheck.details.gpaInfo.difference).toFixed(2)} ناقص)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Project Registration Check */}
+              <div className="flex items-center justify-between p-2 bg-white rounded">
+                <div className="flex items-center gap-2">
+                  {eligibilityCheck.details.isNotRegisteredInAnotherProject ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="font-medium">عدم التسجيل في مشروع آخر</span>
+                </div>
+                {eligibilityCheck.details.currentProject && (
+                  <span className="text-sm text-red-600">
+                    {eligibilityCheck.details.currentProject.title}
+                  </span>
+                )}
+              </div>
+
+              {/* Prerequisites Check */}
+              <div className="flex items-center justify-between p-2 bg-white rounded">
+                <div className="flex items-center gap-2">
+                  {eligibilityCheck.details.completedPrerequisites ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-600" />
+                  )}
+                  <span className="font-medium">المتطلبات الأساسية</span>
+                </div>
+                <span className={eligibilityCheck.details.completedPrerequisites ? "text-green-700" : "text-red-700"}>
+                  {eligibilityCheck.details.completedPrerequisites ? "مكتملة" : "غير مكتملة"}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 

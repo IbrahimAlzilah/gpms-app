@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/shared'
 import { Eye, CheckCircle, XCircle, SlidersHorizontal, Calendar } from 'lucide-react'
 import { SupervisionRequest } from './schema'
 import { useSupervisorRequests } from './supervisor-requests.hook'
-import { acceptSupervisionRequest, rejectSupervisionRequest } from '@/services/supervisor-requests.service'
+import { acceptSupervisionRequest, rejectSupervisionRequest, checkSupervisorProjectLimit } from '@/services/supervisor-requests.service'
 import { useNotifications } from '@/context/NotificationContext'
 import Input from '@/components/ui/Input'
 import { Form, FormGroup, FormLabel } from '@/components/ui/Form'
@@ -113,11 +113,26 @@ const SupervisorRequestsScreen: React.FC = () => {
     setIsProcessing(true)
     try {
       if (actionType === 'accept') {
+        // Check supervisor project limit before accepting
+        if (user?.id) {
+          const limitCheck = await checkSupervisorProjectLimit(user.id)
+          if (!limitCheck.canAccept) {
+            addNotification({
+              title: 'لا يمكن قبول الطلب',
+              message: limitCheck.message || `تم الوصول للحد الأقصى للمشاريع (${limitCheck.currentProjects}/${limitCheck.maxProjects})`,
+              type: 'error'
+            })
+            setIsProcessing(false)
+            return
+          }
+        }
+
         await acceptSupervisionRequest(selectedRequest.id, responseText || undefined)
         addNotification({
           title: 'تم قبول الطلب',
-          message: `تم قبول طلب الإشراف على مشروع "${selectedRequest.projectTitle}"`,
-          type: 'success'
+          message: `تم قبول طلب الإشراف على مشروع "${selectedRequest.projectTitle}". سيتم إرساله للجنة المشاريع للاعتماد النهائي.`,
+          type: 'success',
+          category: 'request'
         })
       } else {
         if (!responseText.trim()) {
@@ -133,7 +148,8 @@ const SupervisorRequestsScreen: React.FC = () => {
         addNotification({
           title: 'تم رفض الطلب',
           message: `تم رفض طلب الإشراف على مشروع "${selectedRequest.projectTitle}"`,
-          type: 'success'
+          type: 'success',
+          category: 'request'
         })
       }
       setActionModalOpen(false)

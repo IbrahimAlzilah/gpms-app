@@ -149,4 +149,104 @@ export async function searchAvailableStudents(query: string): Promise<Array<{ id
   return res.data
 }
 
+/**
+ * Check if student is already in a group
+ */
+export async function checkStudentGroupMembership(studentId: string): Promise<{ isInGroup: boolean; groupId?: string; groupName?: string }> {
+  const res = await apiRequest<{ isInGroup: boolean; groupId?: string; groupName?: string }>(
+    `/groups/check-membership/${studentId}`,
+    'GET',
+    undefined,
+    {
+      mockData: {
+        isInGroup: false,
+      },
+    }
+  )
+  return res.data
+}
+
+/**
+ * Check if group has reached maximum members (default: 4)
+ */
+export async function checkGroupCapacity(groupId: string, maxMembers: number = 4): Promise<{ canAddMember: boolean; currentCount: number; maxMembers: number; message?: string }> {
+  const group = await getGroupById(groupId)
+  const currentCount = group.members.length
+  
+  return {
+    canAddMember: currentCount < maxMembers,
+    currentCount,
+    maxMembers,
+    message: currentCount >= maxMembers 
+      ? `المجموعة مكتملة (${currentCount}/${maxMembers} أعضاء)` 
+      : undefined
+  }
+}
+
+/**
+ * Validate group creation - check if student is already in a group
+ */
+export async function validateGroupCreation(studentId: string): Promise<{ canCreate: boolean; message?: string }> {
+  const membership = await checkStudentGroupMembership(studentId)
+  
+  if (membership.isInGroup) {
+    return {
+      canCreate: false,
+      message: `الطالب عضو بالفعل في مجموعة "${membership.groupName || 'أخرى'}". يجب مغادرة المجموعة الحالية أولاً.`
+    }
+  }
+  
+  return { canCreate: true }
+}
+
+/**
+ * Validate joining a group - check if student is already in a group and if group has capacity
+ */
+export async function validateGroupJoin(groupId: string, studentId: string, maxMembers: number = 4): Promise<{ canJoin: boolean; message?: string }> {
+  // Check if student is already in a group
+  const membership = await checkStudentGroupMembership(studentId)
+  if (membership.isInGroup) {
+    return {
+      canJoin: false,
+      message: `الطالب عضو بالفعل في مجموعة "${membership.groupName || 'أخرى'}". يجب مغادرة المجموعة الحالية أولاً.`
+    }
+  }
+  
+  // Check group capacity
+  const capacity = await checkGroupCapacity(groupId, maxMembers)
+  if (!capacity.canAddMember) {
+    return {
+      canJoin: false,
+      message: capacity.message || 'المجموعة مكتملة'
+    }
+  }
+  
+  return { canJoin: true }
+}
+
+/**
+ * Validate leaving a group - ensure at least one member remains
+ */
+export async function validateGroupLeave(groupId: string, studentId: string): Promise<{ canLeave: boolean; message?: string }> {
+  const group = await getGroupById(groupId)
+  
+  if (group.members.length <= 1) {
+    return {
+      canLeave: false,
+      message: 'لا يمكن مغادرة المجموعة. يجب أن يبقى عضو واحد على الأقل في المجموعة.'
+    }
+  }
+  
+  // Check if student is the leader and there are other members
+  const studentMember = group.members.find(m => m.id === studentId)
+  if (studentMember?.role === 'leader' && group.members.length > 1) {
+    // Leader can leave, but should transfer leadership first (optional)
+    return {
+      canLeave: true,
+      message: 'أنت قائد المجموعة. يُنصح بنقل القيادة لعضو آخر قبل المغادرة.'
+    }
+  }
+  
+  return { canLeave: true }
+}
 

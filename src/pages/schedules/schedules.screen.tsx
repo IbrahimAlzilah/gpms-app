@@ -237,20 +237,20 @@ const SchedulesScreen: React.FC = () => {
                     </div>
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-sm text-gray-600">
-                        <Calendar size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Calendar size={16} className="me-2" />
                         {schedule.date}
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
-                        <Clock size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Clock size={16} className="me-2" />
                         {schedule.startTime} - {schedule.endTime}
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
-                        <MapPin size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                        <MapPin size={16} className="me-2" />
                         {schedule.location}
                       </div>
                       {schedule.participants && schedule.participants.length > 0 && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <Users size={16} className="ml-2 rtl:ml-0 rtl:mr-2" />
+                          <Users size={16} className="me-2" />
                           {schedule.participants.length} مشارك
                         </div>
                       )}

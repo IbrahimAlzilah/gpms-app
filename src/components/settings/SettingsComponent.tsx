@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader } from '../ui/Card'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import Badge from '../ui/Badge'
-import { 
-  Settings, 
-  User, 
-  Bell, 
-  Shield, 
+import {
+  Settings,
+  User,
+  Bell,
+  Shield,
   Palette,
   Globe,
   Database,
@@ -96,7 +96,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ className }) => {
 
   const handleSettingChange = (category: string, setting: string, value: any) => {
     setHasChanges(true)
-    
+
     switch (category) {
       case 'profile':
         setProfileSettings(prev => ({ ...prev, [setting]: value }))
@@ -154,7 +154,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ className }) => {
           disabled
         />
       </div>
-      
+
       <div className="border-t pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">صورة الملف الشخصي</h3>
         <div className="flex items-center space-x-4 rtl:space-x-reverse">
@@ -437,15 +437,15 @@ const SettingsComponent: React.FC<SettingsProps> = ({ className }) => {
         <h3 className="text-lg font-semibold text-gray-900">إجراءات النظام</h3>
         <div className="space-y-3">
           <Button variant="outline" className="w-full justify-start">
-            <RefreshCw className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
+            <RefreshCw className="w-4 h-4 me-2" />
             فحص التحديثات
           </Button>
           <Button variant="outline" className="w-full justify-start">
-            <Database className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
+            <Database className="w-4 h-4 me-2" />
             إنشاء نسخة احتياطية
           </Button>
           <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
-            <AlertTriangle className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
+            <AlertTriangle className="w-4 h-4 me-2" />
             مسح بيانات التخزين المؤقت
           </Button>
         </div>
@@ -480,7 +480,7 @@ const SettingsComponent: React.FC<SettingsProps> = ({ className }) => {
               <Settings className="w-6 h-6 text-gpms-dark" />
               <h2 className="text-xl font-bold text-gray-900">الإعدادات</h2>
             </div>
-            
+
             {hasChanges && (
               <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <Button

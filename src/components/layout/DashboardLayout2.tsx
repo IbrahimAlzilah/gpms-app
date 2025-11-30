@@ -4,14 +4,11 @@ import Sidebar from './Sidebar'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../notifications/Toast'
 import { useLanguage } from '../../context/LanguageContext'
+import { cn } from '../../lib/utils'
 
 interface DashboardLayoutProps {
   children: ReactNode
 }
-
-const EXPANDED_WIDTH = 256 // 64 tailwind
-const COLLAPSED_WIDTH = 80
-const HEADER_HEIGHT_REM = 4.3 // header height
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user } = useAuth()
@@ -35,7 +32,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     localStorage.setItem('gpms:sidebar-collapsed', isCollapsed ? '1' : '0')
   }, [isCollapsed])
 
-  // Responsive breakpoint tracking (match Tailwind lg: 1024px)
+  // Responsive breakpoint tracking
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023.5px)')
     const update = () => setIsMobile(mq.matches)
@@ -57,9 +54,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     return null
   }
 
-  const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH
-  const logicalStart = isRTL ? 'right' : 'left'
-
   const handleMenuClick = () => {
     if (isMobile) {
       setIsDrawerOpen(true)
@@ -71,64 +65,44 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const closeDrawer = () => setIsDrawerOpen(false)
 
   return (
-    // <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
-    <div className="min-h-screen relative flex flex-row flex-1 h-full w-full bg-gray-50">
-      {/* Desktop sidebar (fixed) */}
-      <div
-        // className={`hidden lg:block 1fixed sticky ${isRTL ? 'right-0' : 'left-0'} z-[50] bg-white border-gray-200 shadow-sm`}
-        className={`hidden lg:block 1fixed sticky start-0 z-[50] bg-white border-gray-200 shadow-sm`}
-        style={{ width: sidebarWidth, top: 0, bottom: 0 , blockSize: '100dvh'}}
-      >
-        <Sidebar collapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
-      </div>
-
-      {/* Mobile off-canvas sidebar */}
-      {isMobile && (
-        <>
-          {/* Overlay */}
-          {isDrawerOpen && (
-            <div
-              className="fixed inset-0 z-[150] bg-black/40"
-              onClick={closeDrawer}
-            />
-          )}
-          {/* Drawer */}
-          <div
-            className={`fixed inset-y-0 ${isRTL ? 'right-0' : 'left-0'} z-[160] bg-white shadow-xl transform transition-transform duration-300 ease-in-out`}
-            style={{
-              width: EXPANDED_WIDTH,
-              transform: isDrawerOpen ? 'translateX(0)' : `translateX(${isRTL ? '100%' : '-100%'})`
-            }}
-          >
-            <Sidebar collapsed={false} onToggle={closeDrawer} />
-          </div>
-        </>
+    <div className="flex h-screen w-full overflow-hidden bg-gray-50/50 dark:bg-gray-900">
+      {/* Sidebar Backdrop (Mobile) */}
+      {isMobile && isDrawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden"
+          onClick={closeDrawer}
+        />
       )}
 
-      {/* Main content: fixed container; only main scrolls */}
-      <div
-        style={{
-        //   [logicalStart]: isMobile ? 0 : sidebarWidth,
-        //   position: 'fixed',
-        //   top: `${HEADER_HEIGHT_REM}rem`,
-        //   bottom: 0,
-        //   right: isRTL ? undefined : 0,
-        //   left: isRTL ? 0 : undefined,
-          // width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`
-        }}
-
-        className="min-h-screen relative flex flex-col flex-auto h-full max-w-full"
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 z-50 flex flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-950 lg:static',
+          isMobile
+            ? (isDrawerOpen ? (isRTL ? 'right-0' : 'left-0') : (isRTL ? '-right-full' : '-left-full'))
+            : (isCollapsed ? 'w-20' : 'w-64'),
+          isMobile && 'w-64'
+        )}
       >
-        {/* Header */}
-        <Header onMenuClick={handleMenuClick} sidebarWidth={isMobile ? 0 : sidebarWidth} />
+        <Sidebar
+          collapsed={isMobile ? false : isCollapsed}
+          onToggle={isMobile ? closeDrawer : () => setIsCollapsed(!isCollapsed)}
+          onClose={isMobile ? closeDrawer : undefined}
+        />
+      </aside>
 
-        {/* Page Content */}
-        <main className="1h-full 1w-full 1overflow-auto     transition-width relative h-full w-full flex-1 overflow-auto p-4 lg:p-6">
-          {/* <div className="p-4 lg:p-6"> */}
-            <div className="max-w-8xl mx-auto">
-              {children}
-            </div>
-          {/* </div> */}
+      {/* Main Content Wrapper */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header
+          onMenuClick={handleMenuClick}
+          sidebarWidth={0}
+        />
+
+        {/* Scrollable Content Area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 scroll-smooth">
+          <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {children}
+          </div>
         </main>
       </div>
 

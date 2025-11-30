@@ -6,7 +6,16 @@ import Button from '@/components/ui/Button'
 import Divider from '@/components/ui/Divider'
 import GroupManagementModal from '@/components/forms/GroupManagementModal'
 import { Users, UserPlus, LogOut, PlusCircle, LogIn } from 'lucide-react'
-import { getStudentGroup, createGroup, joinGroup, leaveGroup, Group } from '@/services/groups.service'
+import { 
+  getStudentGroup, 
+  createGroup, 
+  joinGroup, 
+  leaveGroup, 
+  Group,
+  validateGroupCreation,
+  validateGroupJoin,
+  validateGroupLeave
+} from '@/services/groups.service'
 import { useNotifications } from '@/context/NotificationContext'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
@@ -56,6 +65,17 @@ const GroupsScreen: React.FC = () => {
     try {
       switch (modalType) {
         case 'create':
+          // Validate group creation
+          const createValidation = await validateGroupCreation(user.id)
+          if (!createValidation.canCreate) {
+            addNotification({
+              title: 'لا يمكن إنشاء المجموعة',
+              message: createValidation.message || 'الطالب عضو بالفعل في مجموعة أخرى',
+              type: 'error'
+            })
+            return
+          }
+
           const newGroup = await createGroup({
             name: data.groupName || '',
             project: data.projectName,
@@ -65,8 +85,9 @@ const GroupsScreen: React.FC = () => {
           setCurrentGroup(newGroup)
           addNotification({
             title: 'تم إنشاء المجموعة',
-            message: `تم إنشاء المجموعة "${newGroup.name}" بنجاح`,
-            type: 'success'
+            message: `تم إنشاء المجموعة "${newGroup.name}" بنجاح. أنت الآن قائد المجموعة.`,
+            type: 'success',
+            category: 'project'
           })
           break
         case 'invite':
@@ -75,12 +96,30 @@ const GroupsScreen: React.FC = () => {
           break
         case 'leave':
           if (currentGroup) {
+            // Validate leaving group
+            const leaveValidation = await validateGroupLeave(currentGroup.id, user.id)
+            if (!leaveValidation.canLeave) {
+              addNotification({
+                title: 'لا يمكن مغادرة المجموعة',
+                message: leaveValidation.message || 'يجب أن يبقى عضو واحد على الأقل في المجموعة',
+                type: 'error'
+              })
+              return
+            }
+
+            // Show warning if leader
+            if (leaveValidation.message) {
+              const confirm = window.confirm(leaveValidation.message + '\n\nهل تريد المتابعة؟')
+              if (!confirm) return
+            }
+
             await leaveGroup(currentGroup.id, user.id)
             setCurrentGroup(null)
             addNotification({
               title: 'تم مغادرة المجموعة',
               message: 'تم مغادرة المجموعة بنجاح',
-              type: 'success'
+              type: 'success',
+              category: 'project'
             })
           }
           break
@@ -108,6 +147,17 @@ const GroupsScreen: React.FC = () => {
     }
 
     try {
+      // Validate joining group
+      const joinValidation = await validateGroupJoin(joinGroupId.trim(), user.id)
+      if (!joinValidation.canJoin) {
+        addNotification({
+          title: 'لا يمكن الانضمام للمجموعة',
+          message: joinValidation.message || 'لا يمكن الانضمام لهذه المجموعة',
+          type: 'error'
+        })
+        return
+      }
+
       const group = await joinGroup(joinGroupId.trim(), user.id)
       setCurrentGroup(group)
       setIsJoinModalOpen(false)
@@ -115,7 +165,8 @@ const GroupsScreen: React.FC = () => {
       addNotification({
         title: 'تم الانضمام للمجموعة',
         message: `تم الانضمام للمجموعة "${group.name}" بنجاح`,
-        type: 'success'
+        type: 'success',
+        category: 'project'
       })
     } catch (error) {
       addNotification({

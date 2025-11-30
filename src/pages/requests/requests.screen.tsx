@@ -15,7 +15,19 @@ import { ViewModeToggle } from '@/components/shared'
 import { StatusBadge, PriorityBadge } from '@/components/shared'
 import { Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Send, SlidersHorizontal } from 'lucide-react'
 import { Request } from './schema'
-import { approveRequest, rejectRequest, updateRequest, createRequest, executeRequestAction } from '@/services/requests.service'
+import { 
+  approveRequest, 
+  rejectRequest, 
+  updateRequest, 
+  createRequest, 
+  executeRequestAction,
+  approveRequestBySupervisor,
+  approveRequestByCommittee,
+  rejectRequestBySupervisor,
+  rejectRequestByCommittee,
+  getRequestsPendingSupervisor,
+  getRequestsPendingCommittee
+} from '@/services/requests.service'
 import { useNavigate } from 'react-router-dom'
 import { useRequests } from './requests.hook'
 import { useNotifications } from '@/context/NotificationContext'
@@ -195,20 +207,22 @@ const RequestsScreen: React.FC = () => {
                   }
                   
                   try {
-                    await approveRequest(request.id)
+                    // Use supervisor approval function
+                    const approvedRequest = await approveRequestBySupervisor(request.id, undefined, undefined)
                     setRequests(prev => prev.map(r =>
-                      r.id === request.id ? { ...r, status: 'approved' } : r
+                      r.id === request.id ? { ...r, status: approvedRequest.status } : r
                     ))
                     addNotification({
                       title: 'تمت الموافقة',
-                      message: 'تم قبول الطلب بنجاح. سيتم إشعار الطالب بالقرار.',
-                      type: 'success'
+                      message: 'تم قبول الطلب بنجاح. سيتم إرساله للجنة المشاريع للاعتماد النهائي.',
+                      type: 'success',
+                      category: 'request'
                     })
                   } catch (err) {
                     console.error('Error approving request:', err)
                     addNotification({
                       title: 'خطأ',
-                      message: 'فشل في الموافقة على الطلب. يرجى المحاولة مرة أخرى.',
+                      message: err instanceof Error ? err.message : 'فشل في الموافقة على الطلب. يرجى المحاولة مرة أخرى.',
                       type: 'error'
                     })
                   }
@@ -223,14 +237,16 @@ const RequestsScreen: React.FC = () => {
                   const reason = prompt('يرجى إدخال سبب الرفض:')
                   if (reason) {
                     try {
-                      await rejectRequest(request.id, reason)
+                      // Use committee rejection function
+                      const rejectedRequest = await rejectRequestByCommittee(request.id, reason)
                       setRequests(prev => prev.map(r =>
-                        r.id === request.id ? { ...r, status: 'rejected', reason } : r
+                        r.id === request.id ? { ...r, status: rejectedRequest.status, reason } : r
                       ))
                       addNotification({
                         title: 'تم الرفض',
                         message: 'تم رفض الطلب. سيتم إشعار الطالب بالقرار.',
-                        type: 'info'
+                        type: 'info',
+                        category: 'request'
                       })
                     } catch (err) {
                       console.error('Error rejecting request:', err)
@@ -254,8 +270,8 @@ const RequestsScreen: React.FC = () => {
               <button
                 onClick={async () => {
                   try {
-                    // First approve the request
-                    await approveRequest(request.id, 'تمت الموافقة من قبل لجنة المشاريع')
+                    // Use committee approval function
+                    const approvedRequest = await approveRequestByCommittee(request.id, 'تمت الموافقة من قبل لجنة المشاريع', undefined)
                     
                     // Then execute the requested action
                     try {
@@ -312,14 +328,16 @@ const RequestsScreen: React.FC = () => {
                   const reason = prompt('يرجى إدخال سبب الرفض:')
                   if (reason) {
                     try {
-                      await rejectRequest(request.id, reason)
+                      // Use committee rejection function
+                      const rejectedRequest = await rejectRequestByCommittee(request.id, reason)
                       setRequests(prev => prev.map(r =>
-                        r.id === request.id ? { ...r, status: 'rejected', reason } : r
+                        r.id === request.id ? { ...r, status: rejectedRequest.status, reason } : r
                       ))
                       addNotification({
                         title: 'تم الرفض',
                         message: 'تم رفض الطلب. سيتم إشعار الطالب بالقرار.',
-                        type: 'info'
+                        type: 'info',
+                        category: 'request'
                       })
                     } catch (err) {
                       console.error('Error rejecting request:', err)

@@ -1,7 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNotifications } from '../../context/NotificationContext'
 import { cn } from '../../lib/utils'
-import Badge from '../ui/Badge'
 import {
   Bell,
   X,
@@ -23,8 +22,20 @@ const NotificationPanel: React.FC = () => {
     removeNotification,
     clearAllNotifications
   } = useNotifications()
-  
+
   const [isOpen, setIsOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -33,7 +44,7 @@ const NotificationPanel: React.FC = () => {
       case 'error':
         return <XCircle className="w-5 h-5 text-red-500" />
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />
+        return <AlertCircle className="w-5 h-5 text-amber-500" />
       default:
         return <Info className="w-5 h-5 text-blue-500" />
     }
@@ -41,12 +52,12 @@ const NotificationPanel: React.FC = () => {
 
   const formatTimeAgo = (timestamp: Date) => {
     const now = new Date()
-    const diff = now.getTime() - timestamp.getTime()
-    
+    const diff = now.getTime() - new Date(timestamp).getTime()
+
     const minutes = Math.floor(diff / (1000 * 60))
     const hours = Math.floor(diff / (1000 * 60 * 60))
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    
+
     if (days > 0) {
       return `منذ ${days} ${days === 1 ? 'يوم' : 'أيام'}`
     } else if (hours > 0) {
@@ -62,162 +73,149 @@ const NotificationPanel: React.FC = () => {
     if (!notification.read) {
       markAsRead(notification.id)
     }
-    
+
     if (notification.action) {
       notification.action.onClick()
     }
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={panelRef}>
       {/* Notification Bell */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+        className={cn(
+          "relative p-2 rounded-full transition-all duration-200",
+          isOpen ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
+        )}
+        aria-label="Notifications"
       >
-        <Bell size={20} className="text-gray-600" />
+        <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-950 animate-pulse" />
         )}
       </button>
 
       {/* Notification Dropdown */}
       {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 lg:left-0 rtl:left-0 rtl:right-auto mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20 max-h-100 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">الإشعارات</h3>
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-sm text-gpms-dark hover:text-gpms-light transition-colors flex items-center"
-                    title="تمييز الكل كمقروء"
-                  >
-                    <CheckCheck size={16} className="mr-1 rtl:mr-0 rtl:ml-1" />
-                    تمييز الكل
-                  </button>
-                )}
+        <div className="absolute right-0 rtl:left-0 rtl:right-auto mt-2 w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">الإشعارات</h3>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
                 <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={markAllAsRead}
+                  className="text-xs text-gpms-primary hover:text-gpms-dark transition-colors flex items-center gap-1 font-medium"
+                  title="تمييز الكل كمقروء"
                 >
-                  <X size={20} />
+                  <CheckCheck size={14} />
+                  تمييز الكل
                 </button>
-              </div>
-            </div>
-
-            {/* Notifications List */}
-            <div className="1max-h-80 max-h-[25rem] overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">لا توجد إشعارات</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        'p-4 hover:bg-gray-50 transition-colors cursor-pointer',
-                        !notification.read && 'bg-blue-50 border-r-4 border-blue-500'
-                      )}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start space-x-3 rtl:space-x-reverse">
-                        <div className="flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className={cn(
-                                'text-sm font-medium text-gray-900',
-                                !notification.read && 'font-semibold'
-                              )}>
-                                {notification.title}
-                              </h4>
-                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-2">
-                                {formatTimeAgo(notification.timestamp)}
-                              </p>
-                            </div>
-                            
-                            <div className="flex items-center space-x-1 rtl:space-x-reverse ml-2 rtl:ml-0 rtl:mr-2">
-                              {!notification.read && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    markAsRead(notification.id)
-                                  }}
-                                  className="text-gray-400 hover:text-green-600 transition-colors"
-                                  title="تمييز كمقروء"
-                                >
-                                  <Check size={16} />
-                                </button>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  removeNotification(notification.id)
-                                }}
-                                className="text-gray-400 hover:text-red-600 transition-colors"
-                                title="حذف الإشعار"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {notification.action && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                notification.action!.onClick()
-                              }}
-                              className="mt-2 text-xs text-gpms-dark hover:text-gpms-light font-medium transition-colors"
-                            >
-                              {notification.action.label}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
+          </div>
 
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="p-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
-                    {notifications.length} إشعار • {unreadCount} غير مقروء
-                  </span>
-                  <button
-                    onClick={clearAllNotifications}
-                    className="text-red-600 hover:text-red-700 transition-colors flex items-center"
-                  >
-                    <Trash2 size={14} className="mr-1 rtl:mr-0 rtl:ml-1" />
-                    حذف الكل
-                  </button>
+          {/* Notifications List */}
+          <div className="max-h-[24rem] overflow-y-auto custom-scrollbar">
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                  <Bell className="w-6 h-6 text-gray-400" />
                 </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">لا توجد إشعارات جديدة</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={cn(
+                      'group relative p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer',
+                      !notification.read && 'bg-blue-50/50 dark:bg-blue-900/10'
+                    )}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <p className={cn(
+                            'text-sm text-gray-900 dark:text-gray-100',
+                            !notification.read ? 'font-semibold' : 'font-medium'
+                          )}>
+                            {notification.title}
+                          </p>
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2 rtl:mr-2 rtl:ml-0">
+                            {formatTimeAgo(notification.timestamp)}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                          {notification.message}
+                        </p>
+
+                        {notification.action && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              notification.action!.onClick()
+                            }}
+                            className="mt-2 text-xs text-gpms-primary hover:text-gpms-dark font-medium transition-colors"
+                          >
+                            {notification.action.label}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Hover Actions */}
+                    <div className="absolute top-2 left-2 rtl:right-auto rtl:left-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-md shadow-sm p-0.5">
+                      {!notification.read && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            markAsRead(notification.id)
+                          }}
+                          className="p-1 text-gray-400 hover:text-green-600 transition-colors rounded hover:bg-green-50"
+                          title="تمييز كمقروء"
+                        >
+                          <Check size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeNotification(notification.id)
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 transition-colors rounded hover:bg-red-50"
+                        title="حذف"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </>
+
+          {/* Footer */}
+          {notifications.length > 0 && (
+            <div className="p-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 rounded-b-xl">
+              <button
+                onClick={clearAllNotifications}
+                className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-red-600 transition-colors py-1"
+              >
+                <Trash2 size={14} />
+                حذف جميع الإشعارات
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

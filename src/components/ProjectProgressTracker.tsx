@@ -231,11 +231,10 @@ const ProjectProgressTracker: React.FC<ProjectProgressTrackerProps> = ({
                 <div key={milestone.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-gray-900">{milestone.title}</h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      milestone.completed
+                    <span className={`px-2 py-1 text-xs rounded-full ${milestone.completed
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                      }`}>
                       {milestone.completed ? 'مكتمل' : 'قيد التنفيذ'}
                     </span>
                   </div>
@@ -273,7 +272,7 @@ const ProjectProgressTracker: React.FC<ProjectProgressTrackerProps> = ({
                         <span className="font-medium text-gray-900">
                           {new Date(meeting.date).toLocaleDateString('ar-SA')}
                         </span>
-                        <Clock size={16} className="text-gray-400 ml-2 rtl:ml-0 rtl:mr-2" />
+                        <Clock size={16} className="text-gray-400 me-2" />
                         <span className="text-gray-700">{meeting.time}</span>
                       </div>
                       {meeting.location && (
@@ -286,13 +285,12 @@ const ProjectProgressTracker: React.FC<ProjectProgressTrackerProps> = ({
                         <p className="text-sm text-gray-600">{meeting.notes}</p>
                       )}
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      meeting.status === 'completed'
+                    <span className={`px-2 py-1 text-xs rounded-full ${meeting.status === 'completed'
                         ? 'bg-green-100 text-green-800'
                         : meeting.status === 'cancelled'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
                       {meeting.status === 'completed' ? 'مكتمل' : meeting.status === 'cancelled' ? 'ملغي' : 'مجدول'}
                     </span>
                   </div>

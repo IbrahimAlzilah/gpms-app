@@ -263,8 +263,33 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
     }
 
     try {
-      // Simulate API call - send to committee for approval
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Import grade calculation service
+      const { calculateAndSaveFinalGrade, getProjectFinalGrade } = await import('@/services/grades.service')
+      
+      // Get supervisor score if available
+      let supervisorScore = 0
+      try {
+        const existingGrade = await getProjectFinalGrade(projectData.id)
+        if (existingGrade) {
+          supervisorScore = existingGrade.supervisorScore
+        }
+      } catch (error) {
+        // Supervisor score not available yet, will be calculated later
+        console.log('Supervisor score not available yet')
+      }
+      
+      // Discussion score is the overall score from this evaluation
+      const discussionScore = evaluationData.overallScore
+      
+      // Calculate and save final grade (combining supervisor and discussion scores)
+      if (supervisorScore > 0) {
+        await calculateAndSaveFinalGrade(
+          projectData.id,
+          supervisorScore,
+          discussionScore,
+          { supervisorWeight: 0.4, discussionWeight: 0.6 }
+        )
+      }
       
       const finalEvaluation = {
         ...evaluationData,
@@ -273,16 +298,20 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
         evaluator: user?.fullName || 'لجنة المناقشة',
         projectId: projectData.id,
         studentId: projectData.studentId,
-        totalScore,
-        status: 'pending_approval', // Sent to committee for approval
-        submittedToCommittee: true
+        totalScore: discussionScore,
+        discussionScore,
+        supervisorScore,
+        status: supervisorScore > 0 ? 'pending_approval' : 'in_progress', // Sent to committee for approval if both scores available
+        submittedToCommittee: supervisorScore > 0
       }
       
       onSubmit(finalEvaluation)
       
       addNotification({
         title: 'تم إرسال التقييم',
-        message: 'تم إرسال التقييم النهائي للجنة المشاريع للاعتماد. سيتم تحديث حالة المشروع إلى "مكتمل" بعد الاعتماد.',
+        message: supervisorScore > 0 
+          ? 'تم حساب الدرجة النهائية وتم إرسالها للجنة المشاريع للاعتماد. سيتم إشعار الطالب عند الاعتماد.'
+          : 'تم حفظ تقييم المناقشة. سيتم حساب الدرجة النهائية عند توفر تقييم المشرف.',
         type: 'success'
       })
       
