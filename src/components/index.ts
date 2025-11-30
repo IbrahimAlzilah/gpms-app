@@ -19,8 +19,5 @@ export { default as Modal } from './ui/Modal'
 export { ModalProvider } from './ui/ModalProvider'
 export { default as ConfirmDialog } from './ui/ConfirmDialog'
 
-// Layout Components
-// ResponsiveLayout moved to needs-review
-
 // Common Components
 // SubMenu moved to needs-review; prefer using './ui/SubMenu'

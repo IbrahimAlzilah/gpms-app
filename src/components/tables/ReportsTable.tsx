@@ -1,30 +1,22 @@
 import React, { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
 import { cn } from '../../lib/utils'
-import { Card, CardContent, CardHeader } from '../ui/Card'
+import { Card, CardContent } from '../ui/Card'
 import Button from '../ui/Button'
-import Input from '../ui/Input'
 import Badge from '../ui/Badge'
 import { Table } from '../ui/Table'
 import { SearchBar, FilterDropdown, FilterBar } from '../ui/Filter'
 import GridView, { ReportCard } from '../ui/GridView'
-import ViewToggle from '../ui/ViewToggle'
-import { 
+import {
   Plus,
-  Search,
-  Filter,
   Edit,
   Trash2,
   Eye,
-  MoreVertical,
   FileText,
-  Calendar,
-  User,
-  AlertCircle,
-  CheckCircle,
-  Clock,
   Download,
-  BarChart3
+  BarChart3,
+  LayoutGrid,
+  List
 } from 'lucide-react'
 import DocumentFormModal from '../forms/DocumentFormModal'
 
@@ -199,10 +191,10 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'low': return 'bg-green-100 text-green-800'
-      case 'medium': return 'bg-yellow-100 text-yellow-800'
-      case 'high': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
     }
   }
 
@@ -217,21 +209,21 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
 
   const filteredReports = reports
     .filter(report => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.projectTitle.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       const matchesStatus = statusFilter === 'all' || report.status === statusFilter
       const matchesType = typeFilter === 'all' || report.type === typeFilter
       const matchesPriority = priorityFilter === 'all' || report.priority === priorityFilter
-      
+
       return matchesSearch && matchesStatus && matchesType && matchesPriority
     })
     .sort((a, b) => {
       let comparison = 0
-      
+
       switch (sortBy) {
         case 'title':
           comparison = a.title.localeCompare(b.title, 'ar')
@@ -251,7 +243,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
         default:
           comparison = 0
       }
-      
+
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
@@ -284,8 +276,8 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
   const handleModalSubmit = (data: any) => {
     if (editingReport) {
       // Update existing report
-      setReports(prev => prev.map(r => 
-        r.id === editingReport.id 
+      setReports(prev => prev.map(r =>
+        r.id === editingReport.id
           ? { ...r, ...data, updatedAt: new Date().toISOString().split('T')[0] }
           : r
       ))
@@ -313,8 +305,8 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       sortable: true,
       render: (report: Report) => (
         <div>
-          <h3 className="font-medium text-gray-900">{report.title}</h3>
-          <p className="text-sm text-gray-600 line-clamp-1">{report.description}</p>
+          <h3 className="font-medium text-gray-900 dark:text-gray-100">{report.title}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{report.description}</p>
         </div>
       )
     },
@@ -322,7 +314,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       key: 'type',
       label: 'نوع التقرير',
       render: (report: Report) => (
-        <Badge variant="info">
+        <Badge variant="info" className="bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
           {getTypeLabel(report.type)}
         </Badge>
       )
@@ -340,7 +332,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       key: 'priority',
       label: 'الأولوية',
       render: (report: Report) => (
-        <span className={cn('px-2 py-1 rounded-full text-xs font-medium', getPriorityColor(report.priority))}>
+        <span className={cn('px-2 py-1 rounded-full text-xs font-medium border border-transparent', getPriorityColor(report.priority))}>
           {getPriorityLabel(report.priority)}
         </span>
       )
@@ -351,10 +343,10 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       sortable: true,
       render: (report: Report) => (
         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-          <div className="w-8 h-8 bg-gpms-light rounded-full flex items-center justify-center text-white text-sm font-medium">
+          <div className="w-8 h-8 bg-gpms-primary/10 rounded-full flex items-center justify-center text-gpms-primary text-sm font-bold">
             {report.author.charAt(0)}
           </div>
-          <span className="text-sm text-gray-900">{report.author}</span>
+          <span className="text-sm text-gray-900 dark:text-gray-100">{report.author}</span>
         </div>
       )
     },
@@ -363,7 +355,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       label: 'المشروع',
       render: (report: Report) => (
         <div>
-          <span className="text-sm text-gray-900">{report.projectTitle}</span>
+          <span className="text-sm text-gray-900 dark:text-gray-100">{report.projectTitle}</span>
         </div>
       )
     },
@@ -371,9 +363,9 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       key: 'attachments',
       label: 'المرفقات',
       render: (report: Report) => (
-        <div className="flex items-center space-x-1 rtl:space-x-reverse">
-          <FileText size={14} className="text-gray-500" />
-          <span className="text-sm text-gray-600">{report.attachments}</span>
+        <div className="flex items-center space-x-1 rtl:space-x-reverse text-gray-500 dark:text-gray-400">
+          <FileText size={14} />
+          <span className="text-sm">{report.attachments}</span>
         </div>
       )
     },
@@ -381,7 +373,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       key: 'version',
       label: 'الإصدار',
       render: (report: Report) => (
-        <span className="text-sm text-gray-600">v{report.version}</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">v{report.version}</span>
       )
     },
     {
@@ -389,7 +381,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       label: 'تاريخ الاستحقاق',
       sortable: true,
       render: (report: Report) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
           {report.dueDate ? new Date(report.dueDate).toLocaleDateString('ar') : 'غير محدد'}
         </span>
       )
@@ -399,7 +391,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       label: 'آخر تحديث',
       sortable: true,
       render: (report: Report) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
           {new Date(report.updatedAt).toLocaleDateString('ar')}
         </span>
       )
@@ -408,31 +400,31 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
       key: 'actions',
       label: 'الإجراءات',
       render: (report: Report) => (
-        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => handleViewReport(report)}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             title="عرض"
           >
             <Eye size={16} />
           </button>
           <button
             onClick={() => handleDownloadReport(report)}
-            className="text-green-600 hover:text-green-700 transition-colors"
+            className="p-1.5 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
             title="تحميل"
           >
             <Download size={16} />
           </button>
           <button
             onClick={() => handleEditReport(report)}
-            className="text-blue-600 hover:text-blue-700 transition-colors"
+            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
             title="تعديل"
           >
             <Edit size={16} />
           </button>
           <button
             onClick={() => handleDeleteReport(report.id)}
-            className="text-red-600 hover:text-red-700 transition-colors"
+            className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             title="حذف"
           >
             <Trash2 size={16} />
@@ -445,35 +437,63 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
   return (
     <div className={cn('space-y-6', className)}>
       {/* Header */}
-      <Card className="hover-lift">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <BarChart3 className="w-6 h-6 text-gpms-dark" />
-              <h2 className="text-xl font-bold text-gray-900">إدارة التقارير</h2>
-            </div>
-            
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              {/* View Mode Toggle */}
-              <ViewToggle
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-              />
-              
-              <Button
-                onClick={handleAddReport}
-                className="bg-gpms-dark text-white hover:bg-gpms-light"
-              >
-                <Plus className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                تقرير جديد
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gpms-primary to-gpms-dark p-8 text-white shadow-xl">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
 
-        <CardContent>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                <FileText className="w-6 h-6 text-yellow-300" />
+              </div>
+              <h2 className="text-2xl font-bold">إدارة التقارير</h2>
+            </div>
+            <p className="text-blue-100 max-w-xl text-sm leading-relaxed">
+              إدارة ومتابعة جميع التقارير الخاصة بالمشاريع والطلاب
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-1 flex">
+              <button
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  "p-2 rounded-md transition-all",
+                  viewMode === 'table' ? "bg-white text-gpms-primary shadow-sm" : "text-white hover:bg-white/10"
+                )}
+                title="عرض الجدول"
+              >
+                <List size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  "p-2 rounded-md transition-all",
+                  viewMode === 'grid' ? "bg-white text-gpms-primary shadow-sm" : "text-white hover:bg-white/10"
+                )}
+                title="عرض الشبكة"
+              >
+                <LayoutGrid size={20} />
+              </button>
+            </div>
+
+            <Button
+              onClick={handleAddReport}
+              className="bg-white text-gpms-primary hover:bg-blue-50 border-0 shadow-lg"
+            >
+              <Plus className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+              تقرير جديد
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card className="border-0 shadow-lg overflow-hidden">
+        <CardContent className="p-6">
           {/* Search and Filters */}
-          <div className="space-y-4">
+          <div className="space-y-4 mb-6">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -488,25 +508,25 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
                 onChange={setStatusFilter}
                 options={statusOptions}
               />
-              
+
               <FilterDropdown
                 label="النوع"
                 value={typeFilter}
                 onChange={setTypeFilter}
                 options={typeOptions}
               />
-              
+
               <FilterDropdown
                 label="الأولوية"
                 value={priorityFilter}
                 onChange={setPriorityFilter}
                 options={priorityOptions}
               />
-              
+
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+                className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-gpms-primary/20 outline-none"
               >
                 <option value="updatedAt">آخر تحديث</option>
                 <option value="title">العنوان</option>
@@ -514,22 +534,19 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
                 <option value="dueDate">تاريخ الاستحقاق</option>
                 <option value="createdAt">تاريخ الإنشاء</option>
               </select>
-              
+
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className="px-3"
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </Button>
             </FilterBar>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Reports Table/Grid */}
-      <Card className="hover-lift">
-        <CardContent className="p-0">
+          {/* Reports Table/Grid */}
           {viewMode === 'table' ? (
             <Table
               data={filteredReports}
@@ -538,7 +555,7 @@ const ReportsTable: React.FC<ReportsTableProps> = ({ className }) => {
               className="min-h-[400px]"
             />
           ) : (
-            <div className="p-4">
+            <div className="p-1">
               <GridView
                 data={filteredReports}
                 renderItem={(report) => (

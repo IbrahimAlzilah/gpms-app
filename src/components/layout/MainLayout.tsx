@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import { useAuth } from '../../context/AuthContext'
@@ -6,11 +6,7 @@ import { useToast } from '../notifications/Toast'
 import { useLanguage } from '../../context/LanguageContext'
 import { cn } from '../../lib/utils'
 
-interface MainLayoutProps {
-  children: ReactNode
-}
-
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth()
   const { currentLanguage } = useLanguage()
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
@@ -65,7 +61,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const closeDrawer = () => setIsDrawerOpen(false)
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gray-50/50 dark:bg-gray-900">
+    <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Sidebar Backdrop (Mobile) */}
       {isMobile && isDrawerOpen && (
         <div 

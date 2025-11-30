@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 export interface User {
   id: string
@@ -34,7 +34,7 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -53,11 +53,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true)
-    
+
     // Mock authentication - replace with actual API call
     try {
       await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      
+
       // Mock user data based on username
       const mockUsers: Record<string, User> = {
         'student': {

@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               </div>
               <input
                 type="text"
-                placeholder={t('common.search', 'Search...')}
+                placeholder={t('common.search')}
                 className="w-full pl-10 pr-4 py-2 text-sm bg-gray-100/50 border-none rounded-full focus:ring-2 focus:ring-gpms-primary/20 focus:bg-white transition-all duration-200 dark:bg-gray-900 dark:text-gray-100"
               />
             </div>
@@ -77,11 +77,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
 
         {/* Right Section: Actions */}
-        <div className="flex items-center gap-2 lg:gap-4">
+        <div className="flex items-center gap-3">
           {/* Language Toggle */}
           <button
             onClick={toggleLanguage}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 transition-all"
+            className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 transition-all"
             title={currentLanguage === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
           >
             <Globe size={18} />
@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="hidden sm:flex p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 transition-all"
+            className="hidden sm:flex p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 transition-all"
             title={theme === 'light' ? 'Switch to Dark Mode' : 'التبديل إلى الوضع المظلم'}
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
@@ -105,13 +105,13 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <div className="relative ml-2" ref={menuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-3 p-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+              className="flex items-center gap-3 p-1 px-1.5 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-border hover:border-gray-200 dark:hover:border-gray-700"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gpms-primary to-gpms-dark flex items-center justify-center text-white shadow-sm ring-2 ring-white dark:ring-gray-950">
+              <div className="w-8 h-8 rounded-full bg-gpms-dark flex items-center justify-center text-white shadow-sm ring-2 ring-white dark:ring-gray-950">
                 <User size={16} />
               </div>
               <div className="hidden lg:flex flex-col items-start text-sm">
-                <span className="font-semibold text-gray-700 dark:text-gray-200 leading-none">{user?.fullName}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200 leading-none">{user?.fullName}</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t(`common.${user?.role}`)}</span>
               </div>
             </button>
@@ -127,11 +127,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
                   <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors">
                     <User size={16} />
-                    {t('common.profile', 'Profile')}
+                    {t('common.profile')}
                   </button>
                   <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors">
                     <Settings size={16} />
-                    {t('common.settings', 'Settings')}
+                    {t('common.settings')}
                   </button>
 
                   <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
@@ -141,7 +141,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
                   >
                     <LogOut size={16} />
-                    {t('common.logout', 'Logout')}
+                    {t('common.logout')}
                   </button>
                 </div>
               </div>

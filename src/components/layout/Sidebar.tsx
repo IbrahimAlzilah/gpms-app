@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useMemo, useState, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { cn } from '../../lib/utils'
 import SubMenu from '../ui/SubMenu'
-import { ChevronsLeft, ChevronsRight, LayoutDashboard } from 'lucide-react'
+import { ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { baseNavigation, roleNavigation } from '../../config/navigation.config'
 
 export interface SidebarProps {
@@ -28,7 +28,7 @@ interface SubMenuStates {
   [key: string]: boolean
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle }) => {
+const Sidebar = ({ onClose, collapsed = false, onToggle }: SidebarProps) => {
   const { user } = useAuth()
   const { t, currentLanguage } = useLanguage()
   const location = useLocation()
@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, collapsed = false, onToggle 
                 GPMS
               </span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium truncate max-w-[120px]">
-                {t('app.subtitle', 'Project Management')}
+                {t('app.subtitle')}
               </span>
             </div>
           )}

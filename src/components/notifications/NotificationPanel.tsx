@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNotifications } from '../../context/NotificationContext'
 import { cn } from '../../lib/utils'
 import {
@@ -13,7 +13,7 @@ import {
   XCircle
 } from 'lucide-react'
 
-const NotificationPanel: React.FC = () => {
+const NotificationPanel = () => {
   const {
     notifications,
     unreadCount,
@@ -85,8 +85,8 @@ const NotificationPanel: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative p-2 rounded-full transition-all duration-200",
-          isOpen ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
+          "relative p-2 rounded-full bg-gray-100 dark:bg-gray-800 transition-all duration-200",
+          isOpen ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800"
         )}
         aria-label="Notifications"
       >
