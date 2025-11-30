@@ -9,14 +9,21 @@ import { checkStudentEligibility, checkStudentProjectRegistration, StudentEligib
 import { X, CheckCircle, XCircle, Clock, Award, BookOpen, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface ProjectRegistrationFormProps {
+/**
+ * Props for ProjectRegistrationForm component
+ */
+export interface ProjectRegistrationFormComponentProps {
+  /** Whether the modal is open */
   isOpen: boolean
+  /** Callback to close the modal */
   onClose: () => void
+  /** The project to register for */
   project: Project | null
+  /** Callback when registration is successful */
   onSuccess?: () => void
 }
 
-const ProjectRegistrationForm: React.FC<ProjectRegistrationFormProps> = ({
+const ProjectRegistrationForm: React.FC<ProjectRegistrationFormComponentProps> = ({
   isOpen,
   onClose,
   project,

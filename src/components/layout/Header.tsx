@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../context/ThemeContext'
 import NotificationPanel from '../notifications/NotificationPanel'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import {
   Menu,
   Settings,
@@ -11,42 +12,40 @@ import {
   Globe,
   Sun,
   Moon,
-  Search,
-  Bell
+  Search
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
-interface HeaderProps {
+/**
+ * Props for Header component
+ */
+export interface HeaderComponentProps {
+  /** Callback when menu button is clicked */
   onMenuClick?: () => void
+  /** Width of the sidebar (deprecated, kept for compatibility) */
   sidebarWidth?: number
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+const Header: React.FC<HeaderComponentProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth()
   const { t, changeLanguage, currentLanguage } = useLanguage()
   const { theme, toggleTheme } = useTheme()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout()
     setShowUserMenu(false)
-  }
+  }, [logout])
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     changeLanguage(currentLanguage === 'ar' ? 'en' : 'ar')
-  }
+  }, [changeLanguage, currentLanguage])
 
   // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  useClickOutside(menuRef, () => {
+    setShowUserMenu(false)
+  }, { enabled: showUserMenu })
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md dark:bg-gray-950/80 dark:border-gray-800 transition-all duration-300">

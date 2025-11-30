@@ -1,32 +1,21 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState, useCallback } from 'react'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../notifications/Toast'
 import { useLanguage } from '../../context/LanguageContext'
+import { useLocalStorageBoolean } from '@/hooks/useLocalStorage'
 import { cn } from '../../lib/utils'
 
 const MainLayout = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth()
   const { currentLanguage } = useLanguage()
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+  const [isCollapsed, setIsCollapsed] = useLocalStorageBoolean('gpms:sidebar-collapsed', false)
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false)
   const [isMobile, setIsMobile] = useState<boolean>(false)
   const { ToastContainer } = useToast()
 
   const isRTL = useMemo(() => currentLanguage === 'ar', [currentLanguage])
-
-  // Persisted sidebar collapse state (desktop)
-  useEffect(() => {
-    const saved = localStorage.getItem('gpms:sidebar-collapsed')
-    if (saved !== null) {
-      setIsCollapsed(saved === '1')
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('gpms:sidebar-collapsed', isCollapsed ? '1' : '0')
-  }, [isCollapsed])
 
   // Responsive breakpoint tracking
   useEffect(() => {
@@ -46,19 +35,25 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
     }
   }, [isDrawerOpen])
 
-  if (!user) {
-    return null
-  }
+  const closeDrawer = useCallback(() => {
+    setIsDrawerOpen(false)
+  }, [])
 
-  const handleMenuClick = () => {
+  const handleMenuClick = useCallback(() => {
     if (isMobile) {
       setIsDrawerOpen(true)
     } else {
       setIsCollapsed(!isCollapsed)
     }
-  }
+  }, [isMobile, isCollapsed, setIsCollapsed])
 
-  const closeDrawer = () => setIsDrawerOpen(false)
+  const handleToggleCollapse = useCallback(() => {
+    setIsCollapsed(!isCollapsed)
+  }, [isCollapsed, setIsCollapsed])
+
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
@@ -82,7 +77,7 @@ const MainLayout = ({ children }: { children: ReactNode }) => {
       >
         <Sidebar 
           collapsed={isMobile ? false : isCollapsed}
-          onToggle={isMobile ? closeDrawer : () => setIsCollapsed(!isCollapsed)}
+          onToggle={isMobile ? closeDrawer : handleToggleCollapse}
           onClose={isMobile ? closeDrawer : undefined}
         />
       </aside>
