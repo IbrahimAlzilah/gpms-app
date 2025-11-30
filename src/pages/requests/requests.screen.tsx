@@ -15,7 +15,7 @@ import { ViewModeToggle } from '@/components/shared'
 import { StatusBadge, PriorityBadge } from '@/components/shared'
 import { Plus, Eye, Edit, Trash2, CheckCircle, XCircle, Send, SlidersHorizontal } from 'lucide-react'
 import { Request } from './schema'
-import { approveRequest, rejectRequest, updateRequest, createRequest } from '@/services/requests.service'
+import { approveRequest, rejectRequest, updateRequest, createRequest, executeRequestAction } from '@/services/requests.service'
 import { useNavigate } from 'react-router-dom'
 import { useRequests } from './requests.hook'
 import { useNotifications } from '@/context/NotificationContext'
@@ -92,7 +92,31 @@ const RequestsScreen: React.FC = () => {
   }, [requests, searchQuery, statusFilter, typeFilter, priorityFilter])
 
   const canCreate = user?.role === 'student'
-  const canApprove = user?.role === 'supervisor'
+  const canApprove = user?.role === 'supervisor' || user?.role === 'committee'
+  const canHandle = user?.role === 'committee'
+  
+  // For committee, show all requests that need committee approval
+  const committeeRequests = useMemo(() => {
+    if (user?.role === 'committee') {
+      return filteredRequests.filter(r => 
+        r.type === 'change_supervisor' || 
+        r.type === 'change_group' || 
+        r.type === 'change_project' ||
+        (r.type === 'supervision' && r.status === 'approved') // Already approved by supervisor
+      )
+    }
+    return filteredRequests
+  }, [filteredRequests, user?.role])
+  
+  // For supervisors, filter to show only supervision requests
+  const supervisorRequests = useMemo(() => {
+    if (user?.role === 'supervisor') {
+      return filteredRequests.filter(r => r.type === 'supervision' || r.type === 'supervision_request')
+    }
+    return filteredRequests
+  }, [filteredRequests, user?.role])
+  
+  const MAX_SUPERVISED_PROJECTS = 5 // Maximum projects a supervisor can supervise
 
   const handleFilterClear = () => {
     setStatusFilter('all')
@@ -152,12 +176,120 @@ const RequestsScreen: React.FC = () => {
               <Edit size={16} />
             </button>
           )}
-          {canApprove && request.status === 'pending' && (
+          {canApprove && request.status === 'pending' && user?.role === 'supervisor' && (
+            <>
+              <button
+                onClick={async () => {
+                  // Check if supervisor has reached max projects (for supervision requests)
+                  if (user?.role === 'supervisor' && (request.type === 'supervision' || request.type === 'supervision_request')) {
+                    // TODO: Get current supervised projects count from API
+                    const currentProjectsCount = 3 // Mock data - should come from API
+                    if (currentProjectsCount >= MAX_SUPERVISED_PROJECTS) {
+                      addNotification({
+                        title: 'لا يمكن الموافقة',
+                        message: `لقد وصلت إلى الحد الأقصى للمشاريع المشرفة عليها (${MAX_SUPERVISED_PROJECTS}). يرجى رفض الطلب أو إلغاء إشراف على مشروع آخر.`,
+                        type: 'warning'
+                      })
+                      return
+                    }
+                  }
+                  
+                  try {
+                    await approveRequest(request.id)
+                    setRequests(prev => prev.map(r =>
+                      r.id === request.id ? { ...r, status: 'approved' } : r
+                    ))
+                    addNotification({
+                      title: 'تمت الموافقة',
+                      message: 'تم قبول الطلب بنجاح. سيتم إشعار الطالب بالقرار.',
+                      type: 'success'
+                    })
+                  } catch (err) {
+                    console.error('Error approving request:', err)
+                    addNotification({
+                      title: 'خطأ',
+                      message: 'فشل في الموافقة على الطلب. يرجى المحاولة مرة أخرى.',
+                      type: 'error'
+                    })
+                  }
+                }}
+                className="text-green-600 hover:text-green-700 transition-colors"
+                title="موافقة"
+              >
+                <CheckCircle size={16} />
+              </button>
+              <button
+                onClick={async () => {
+                  const reason = prompt('يرجى إدخال سبب الرفض:')
+                  if (reason) {
+                    try {
+                      await rejectRequest(request.id, reason)
+                      setRequests(prev => prev.map(r =>
+                        r.id === request.id ? { ...r, status: 'rejected', reason } : r
+                      ))
+                      addNotification({
+                        title: 'تم الرفض',
+                        message: 'تم رفض الطلب. سيتم إشعار الطالب بالقرار.',
+                        type: 'info'
+                      })
+                    } catch (err) {
+                      console.error('Error rejecting request:', err)
+                      addNotification({
+                        title: 'خطأ',
+                        message: 'فشل في رفض الطلب. يرجى المحاولة مرة أخرى.',
+                        type: 'error'
+                      })
+                    }
+                  }
+                }}
+                className="text-red-600 hover:text-red-700 transition-colors"
+                title="رفض"
+              >
+                <XCircle size={16} />
+              </button>
+            </>
+          )}
+          {canHandle && request.status === 'pending' && (
             <>
               <button
                 onClick={async () => {
                   try {
-                    await approveRequest(request.id)
+                    // First approve the request
+                    await approveRequest(request.id, 'تمت الموافقة من قبل لجنة المشاريع')
+                    
+                    // Then execute the requested action
+                    try {
+                      const actionData: any = {}
+                      
+                      // Prepare action data based on request type
+                      if (request.type === 'change_supervisor') {
+                        actionData.newSupervisorId = request.description?.match(/supervisor[:\s]+(\w+)/i)?.[1] || ''
+                        actionData.projectId = request.description?.match(/project[:\s]+(\w+)/i)?.[1] || ''
+                      } else if (request.type === 'change_group') {
+                        actionData.newGroupId = request.description?.match(/group[:\s]+(\w+)/i)?.[1] || ''
+                        actionData.studentId = request.description?.match(/student[:\s]+(\w+)/i)?.[1] || ''
+                      } else if (request.type === 'change_project') {
+                        actionData.newProjectId = request.description?.match(/project[:\s]+(\w+)/i)?.[1] || ''
+                        actionData.studentId = request.description?.match(/student[:\s]+(\w+)/i)?.[1] || ''
+                      }
+                      
+                      await executeRequestAction(request.id, request.type, actionData)
+                      
+                      addNotification({
+                        title: 'تمت الموافقة والتنفيذ',
+                        message: `تم قبول الطلب وتنفيذ الإجراء المطلوب (${request.type}). سيتم إشعار الطالب.`,
+                        type: 'success'
+                      })
+                    } catch (actionError) {
+                      // Request approved but action execution failed
+                      console.error('Error executing action:', actionError)
+                      addNotification({
+                        title: 'تمت الموافقة',
+                        message: 'تم قبول الطلب ولكن فشل تنفيذ الإجراء. يرجى تنفيذه يدوياً.',
+                        type: 'warning'
+                      })
+                    }
+                    
                     setRequests(prev => prev.map(r =>
                       r.id === request.id ? { ...r, status: 'approved' } : r
                     ))
@@ -184,14 +316,19 @@ const RequestsScreen: React.FC = () => {
                       setRequests(prev => prev.map(r =>
                         r.id === request.id ? { ...r, status: 'rejected', reason } : r
                       ))
-                      } catch (err) {
-                        console.error('Error rejecting request:', err)
-                        addNotification({
-                          title: 'خطأ',
-                          message: 'فشل في رفض الطلب. يرجى المحاولة مرة أخرى.',
-                          type: 'error'
-                        })
-                      }
+                      addNotification({
+                        title: 'تم الرفض',
+                        message: 'تم رفض الطلب. سيتم إشعار الطالب بالقرار.',
+                        type: 'info'
+                      })
+                    } catch (err) {
+                      console.error('Error rejecting request:', err)
+                      addNotification({
+                        title: 'خطأ',
+                        message: 'فشل في رفض الطلب. يرجى المحاولة مرة أخرى.',
+                        type: 'error'
+                      })
+                    }
                   }
                 }}
                 className="text-red-600 hover:text-red-700 transition-colors"
@@ -204,7 +341,7 @@ const RequestsScreen: React.FC = () => {
         </div>
       )
     }
-  ], [canCreate, canApprove])
+  ], [canCreate, canApprove, canHandle, user?.role, MAX_SUPERVISED_PROJECTS, addNotification])
 
   return (
     <div className="space-y-6">
@@ -262,9 +399,31 @@ const RequestsScreen: React.FC = () => {
         <CardContent>
           {requestsLoading ? (
             <div className="text-center py-12">جاري التحميل...</div>
-          ) : viewMode === 'table' ? (
+          ) : (
+            <>
+              {user?.role === 'supervisor' && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>ملاحظة:</strong> يتم عرض طلبات الإشراف فقط. الحد الأقصى للمشاريع المشرفة عليها: {MAX_SUPERVISED_PROJECTS}
+                  </p>
+                </div>
+              )}
+              {user?.role === 'committee' && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>ملاحظة:</strong> يتم عرض الطلبات التي تحتاج موافقة لجنة المشاريع (تغيير مشرف، مجموعة، مشروع، إلخ).
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          {viewMode === 'table' ? (
             <DataTable
-              data={filteredRequests}
+              data={
+                user?.role === 'supervisor' ? supervisorRequests :
+                user?.role === 'committee' ? committeeRequests :
+                filteredRequests
+              }
               columns={columns}
               emptyMessage="لا توجد طلبات"
               className="min-h-[400px]"
@@ -277,7 +436,11 @@ const RequestsScreen: React.FC = () => {
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredRequests.map((request) => (
+              {(
+                user?.role === 'supervisor' ? supervisorRequests :
+                user?.role === 'committee' ? committeeRequests :
+                filteredRequests
+              ).map((request) => (
                 <Card key={request.id} className="hover-lift">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">

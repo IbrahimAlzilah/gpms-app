@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
+import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { cn } from '../../lib/utils'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
@@ -7,6 +9,7 @@ import Input from '../ui/Input'
 import { Form, FormGroup, FormLabel, FormError } from '../ui/Form'
 import Badge from '../ui/Badge'
 import ProgressBar from '../ui/ProgressBar'
+import { checkPeriodStatus } from '../../services/periods.service'
 import { 
   Upload, 
   File,
@@ -49,8 +52,12 @@ const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
   editData
 }) => {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const { addNotification } = useNotifications()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [periodCheck, setPeriodCheck] = useState<{ isOpen: boolean; message?: string }>({ isOpen: true })
+  const [isCheckingPeriod, setIsCheckingPeriod] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({
@@ -223,10 +230,50 @@ const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
   }
 
+  useEffect(() => {
+    const checkDocumentSubmissionPeriod = async () => {
+      if (!isOpen || !user || user.role !== 'student') {
+        setPeriodCheck({ isOpen: true })
+        return
+      }
+
+      setIsCheckingPeriod(true)
+      try {
+        const status = await checkPeriodStatus('document_submission')
+        setPeriodCheck({
+          isOpen: status.isOpen,
+          message: status.isOpen ? undefined : 
+            status.period ? 
+              `فترة تسليم الوثائق مغلقة. الفترة: ${new Date(status.period.startDate).toLocaleDateString('ar-SA')} - ${new Date(status.period.endDate).toLocaleDateString('ar-SA')}` :
+              'لا توجد فترة زمنية محددة لتسليم الوثائق'
+        })
+      } catch (error) {
+        console.error('Error checking period:', error)
+        setPeriodCheck({ isOpen: true }) // Allow submission if check fails
+      } finally {
+        setIsCheckingPeriod(false)
+      }
+    }
+
+    checkDocumentSubmissionPeriod()
+  }, [isOpen, user])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setErrors({})
+
+    // Check period status for students
+    if (user?.role === 'student' && !periodCheck.isOpen) {
+      setErrors({ general: periodCheck.message || 'فترة تسليم الوثائق مغلقة حالياً' })
+      setIsLoading(false)
+      addNotification({
+        title: 'فترة التسليم مغلقة',
+        message: periodCheck.message || 'فترة تسليم الوثائق مغلقة حالياً',
+        type: 'error'
+      })
+      return
+    }
 
     // Validation
     const newErrors: Record<string, string> = {}
@@ -261,10 +308,22 @@ const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
         ...formData,
         files: uploadedFiles.filter(f => f.status === 'completed')
       })
+      
+      addNotification({
+        title: 'تم الرفع',
+        message: 'تم رفع الوثيقة بنجاح',
+        type: 'success'
+      })
+      
       onClose()
       
     } catch (error) {
       setErrors({ general: 'حدث خطأ أثناء حفظ البيانات' })
+      addNotification({
+        title: 'خطأ',
+        message: 'حدث خطأ أثناء رفع الوثيقة',
+        type: 'error'
+      })
     } finally {
       setIsLoading(false)
     }

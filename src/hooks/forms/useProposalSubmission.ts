@@ -94,46 +94,67 @@ export const useProposalSubmission = () => {
     return null
   }, [validateForm])
 
-  const checkSubmissionPeriod = useCallback((userRole: string): { isOpen: boolean; message?: string } => {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    
-    // Define submission periods based on role
-    const periods = {
-      student: {
-        start: new Date(`${currentYear}-01-01`),
-        end: new Date(`${currentYear}-03-31`)
-      },
-      supervisor: {
-        start: new Date(`${currentYear}-01-01`),
-        end: new Date(`${currentYear}-12-31`)
-      },
-      committee: {
-        start: new Date(`${currentYear}-01-01`),
-        end: new Date(`${currentYear}-12-31`)
+  const checkSubmissionPeriod = useCallback(async (userRole: string): Promise<{ 
+    isOpen: boolean
+    message?: string
+    period?: { startDate: string; endDate: string; name: string }
+  }> => {
+    try {
+      const { checkPeriodStatus } = await import('@/services/periods.service')
+      const status = await checkPeriodStatus('proposal_submission')
+      
+      if (!status.period) {
+        return { 
+          isOpen: false, 
+          message: 'لا توجد فترة زمنية محددة لتقديم المقترحات. يرجى التواصل مع لجنة المشاريع.' 
+        }
       }
-    }
 
-    const period = periods[userRole as keyof typeof periods]
-    if (!period) {
-      return { isOpen: false, message: 'دور المستخدم غير صحيح' }
-    }
+      const periodInfo = {
+        startDate: status.period.startDate,
+        endDate: status.period.endDate,
+        name: status.period.name
+      }
 
-    if (now < period.start) {
+      if (!status.isOpen) {
+        const now = new Date()
+        const startDate = new Date(status.period.startDate)
+        const endDate = new Date(status.period.endDate)
+
+        if (now < startDate) {
+          return { 
+            isOpen: false, 
+            message: `فترة التقديم لم تبدأ بعد. تبدأ في ${startDate.toLocaleDateString('ar-SA', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}`,
+            period: periodInfo
+          }
+        }
+
+        if (now > endDate || !status.period.isActive) {
+          return { 
+            isOpen: false, 
+            message: `فترة التقديم انتهت. انتهت في ${endDate.toLocaleDateString('ar-SA', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}`,
+            period: periodInfo
+          }
+        }
+      }
+
       return { 
-        isOpen: false, 
-        message: `فترة التقديم لم تبدأ بعد. تبدأ في ${period.start.toLocaleDateString('ar')}` 
+        isOpen: status.isOpen,
+        period: periodInfo
       }
+    } catch (error) {
+      console.error('Error checking period status:', error)
+      // Fallback to default behavior if service fails
+      return { isOpen: false, message: 'حدث خطأ أثناء التحقق من فترة التقديم' }
     }
-
-    if (now > period.end) {
-      return { 
-        isOpen: false, 
-        message: `فترة التقديم انتهت. انتهت في ${period.end.toLocaleDateString('ar')}` 
-      }
-    }
-
-    return { isOpen: true }
   }, [])
 
   const submitProposal = useCallback(async (
@@ -145,7 +166,7 @@ export const useProposalSubmission = () => {
 
     try {
       // Check submission period
-      const periodCheck = checkSubmissionPeriod(userRole)
+      const periodCheck = await checkSubmissionPeriod(userRole)
       if (!periodCheck.isOpen) {
         setError(periodCheck.message || 'فترة التقديم مغلقة')
         return { success: false, message: periodCheck.message || 'فترة التقديم مغلقة' }

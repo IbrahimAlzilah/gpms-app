@@ -1,5 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
+import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
+import { useProposalSubmission } from '../../hooks/forms/useProposalSubmission'
 import { cn } from '../../lib/utils'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
@@ -17,7 +20,10 @@ import {
   Calendar,
   BookOpen,
   Save,
-  XCircle
+  XCircle,
+  AlertCircle,
+  CheckCircle,
+  Clock
 } from 'lucide-react'
 
 interface ProposalFormModalProps {
@@ -25,17 +31,34 @@ interface ProposalFormModalProps {
   onClose: () => void
   onSubmit: (data: any) => void
   editData?: any
+  userRole?: 'student' | 'supervisor' | 'committee'
 }
 
 const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  editData
+  editData,
+  userRole
 }) => {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const { addNotification } = useNotifications()
+  const { 
+    isLoading: isSubmitting, 
+    error: submissionError,
+    submitProposal,
+    checkSubmissionPeriod,
+    getProposalTypeInfo
+  } = useProposalSubmission()
+  
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [periodStatus, setPeriodStatus] = useState<{ isOpen: boolean; message?: string } | null>(null)
+  const [isCheckingPeriod, setIsCheckingPeriod] = useState(false)
+  
+  const actualUserRole = userRole || (user?.role === 'student' ? 'student' : user?.role === 'supervisor' ? 'supervisor' : 'committee')
+  const typeInfo = getProposalTypeInfo(actualUserRole)
   
   const [formData, setFormData] = useState({
     title: editData?.title || '',
@@ -51,6 +74,31 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
   })
 
   const [newKeyword, setNewKeyword] = useState('')
+
+  // Check period status when modal opens
+  useEffect(() => {
+    if (isOpen && actualUserRole === 'student') {
+      checkPeriodStatus()
+    } else if (isOpen && actualUserRole !== 'committee') {
+      // For supervisors, also check period
+      checkPeriodStatus()
+    } else {
+      // Committee can submit anytime
+      setPeriodStatus({ isOpen: true })
+    }
+  }, [isOpen, actualUserRole])
+
+  const checkPeriodStatus = async () => {
+    setIsCheckingPeriod(true)
+    try {
+      const status = await checkSubmissionPeriod(actualUserRole)
+      setPeriodStatus(status)
+    } catch (error) {
+      setPeriodStatus({ isOpen: false, message: 'حدث خطأ أثناء التحقق من فترة التقديم' })
+    } finally {
+      setIsCheckingPeriod(false)
+    }
+  }
 
   const addKeyword = () => {
     if (newKeyword.trim() && !formData.keywords.includes(newKeyword.trim())) {
@@ -99,6 +147,15 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
     setIsLoading(true)
     setErrors({})
 
+    // Check period status for students and supervisors
+    if (actualUserRole !== 'committee' && periodStatus && !periodStatus.isOpen) {
+      setErrors({ 
+        general: periodStatus.message || 'فترة التقديم مغلقة حالياً. يرجى المحاولة لاحقاً.' 
+      })
+      setIsLoading(false)
+      return
+    }
+
     // Validation
     const newErrors: Record<string, string> = {}
     
@@ -114,6 +171,10 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
       newErrors.objectives = 'أهداف المشروع مطلوبة'
     }
 
+    if (formData.keywords.length === 0) {
+      newErrors.keywords = 'يجب إضافة تقنية واحدة على الأقل'
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       setIsLoading(false)
@@ -121,14 +182,47 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Use the submission hook
+      const proposalData = {
+        ...formData,
+        userRole: actualUserRole
+      }
       
-      onSubmit(formData)
-      onClose()
+      const result = await submitProposal(proposalData, actualUserRole)
+      
+      if (result.success) {
+        addNotification({
+          title: 'تم إرسال المقترح',
+          message: result.message,
+          type: 'success',
+          category: 'project',
+          relatedId: result.proposalId,
+        })
+        
+        onSubmit({
+          ...formData,
+          id: result.proposalId,
+          status: 'under_review',
+          nextStep: result.nextStep
+        })
+        onClose()
+      } else {
+        setErrors({ general: result.message })
+        addNotification({
+          title: 'فشل إرسال المقترح',
+          message: result.message,
+          type: 'error',
+        })
+      }
       
     } catch (error) {
-      setErrors({ general: 'حدث خطأ أثناء إرسال المقترح' })
+      const errorMessage = 'حدث خطأ أثناء إرسال المقترح'
+      setErrors({ general: errorMessage })
+      addNotification({
+        title: 'خطأ',
+        message: errorMessage,
+        type: 'error',
+      })
     } finally {
       setIsLoading(false)
     }
@@ -155,12 +249,36 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleCancel}
-      title={editData ? 'تعديل مقترح المشروع' : 'مقترح مشروع جديد'}
+      title={editData ? 'تعديل مقترح المشروع' : typeInfo.title}
       size="xl"
     >
       <div className="max-h-[74vh] overflow-y-auto">
         <Form onSubmit={handleSubmit}>
           <div className="space-y-6">
+            {/* Period Status Alert */}
+            {isCheckingPeriod ? (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                <span>جاري التحقق من فترة التقديم...</span>
+              </div>
+            ) : periodStatus && !periodStatus.isOpen && actualUserRole !== 'committee' ? (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">فترة التقديم مغلقة</p>
+                  <p className="text-sm mt-1">{periodStatus.message || 'فترة التقديم غير متاحة حالياً'}</p>
+                </div>
+              </div>
+            ) : periodStatus && periodStatus.isOpen && actualUserRole !== 'committee' ? (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-start gap-2">
+                <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold">فترة التقديم مفتوحة</p>
+                  <p className="text-sm mt-1">يمكنك الآن تقديم مقترح مشروع جديد</p>
+                </div>
+              </div>
+            ) : null}
+
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-sm text-gray-900 border-b pb-2">المعلومات الأساسية</h3>
@@ -357,9 +475,13 @@ const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
                   <XCircle className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                   إلغاء
                 </Button>
-                <Button type="submit" loading={isLoading}>
+                <Button 
+                  type="submit" 
+                  loading={isLoading || isSubmitting}
+                  disabled={periodStatus !== null && !periodStatus.isOpen && actualUserRole !== 'committee'}
+                >
                   <Save className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                  {editData ? 'تحديث المقترح' : 'إرسال المقترح'}
+                  {editData ? 'تحديث المقترح' : typeInfo.submitButtonText}
                 </Button>
               </div>
             </div>

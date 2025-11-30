@@ -12,12 +12,17 @@ import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { ViewModeToggle } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
-import { Plus, Eye, Edit, Trash2, Megaphone, Calendar, SlidersHorizontal } from 'lucide-react'
+import { Plus, Eye, Edit, Trash2, Megaphone, Calendar, SlidersHorizontal, Clock } from 'lucide-react'
 import { Announcement } from './schema'
 import { useNavigate } from 'react-router-dom'
 import { deleteAnnouncement } from '@/services/announcements.service'
 import { useAnnouncements } from './announcements.hook'
 import { useNotifications } from '@/context/NotificationContext'
+import { usePeriods } from '@/hooks/usePeriods'
+import { Period } from '@/services/periods.service'
+import PeriodAnnouncementForm from '@/components/forms/PeriodAnnouncementForm'
+import { createPeriod, updatePeriod, deletePeriod } from '@/services/periods.service'
+import Tabs from '@/components/ui/Tabs'
 
 const AnnouncementsScreen: React.FC = () => {
   const { t } = useLanguage()
@@ -25,6 +30,8 @@ const AnnouncementsScreen: React.FC = () => {
   const navigate = useNavigate()
   const { addNotification } = useNotifications()
   const { announcements, isLoading: announcementsLoading, refetch } = useAnnouncements()
+  const { periods, isLoading: periodsLoading, refetch: refetchPeriods } = usePeriods()
+  const [activeTab, setActiveTab] = useState<'announcements' | 'periods'>('announcements')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -35,6 +42,8 @@ const AnnouncementsScreen: React.FC = () => {
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
   const [viewAnnouncement, setViewAnnouncement] = useState<Announcement | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false)
+  const [editingPeriod, setEditingPeriod] = useState<Period | null>(null)
 
   const statusOptions = [
     { value: 'all', label: 'جميع الحالات' },
@@ -152,8 +161,165 @@ const AnnouncementsScreen: React.FC = () => {
     }
   ], [canEdit])
 
+  const handlePeriodSubmit = async (data: any) => {
+    if (editingPeriod) {
+      await updatePeriod(editingPeriod.id, data)
+    } else {
+      await createPeriod(data)
+    }
+    refetchPeriods()
+    setIsPeriodModalOpen(false)
+    setEditingPeriod(null)
+  }
+
+  const handleDeletePeriod = async (id: string) => {
+    try {
+      await deletePeriod(id)
+      refetchPeriods()
+      addNotification({
+        title: 'تم الحذف',
+        message: 'تم حذف الفترة الزمنية بنجاح',
+        type: 'success'
+      })
+    } catch (error) {
+      addNotification({
+        title: 'خطأ',
+        message: error instanceof Error ? error.message : 'حدث خطأ أثناء حذف الفترة',
+        type: 'error'
+      })
+    }
+  }
+
+  const periodTypeLabels: Record<string, string> = {
+    proposal_submission: 'تقديم المقترحات',
+    project_registration: 'التسجيل في المشاريع',
+    document_submission: 'تسليم الوثائق',
+    evaluation: 'التقييم',
+    defense: 'المناقشة'
+  }
+
   return (
     <div className="space-y-6">
+      <Card className="hover-lift">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">إعلان الفترات الزمنية</h1>
+            </div>
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              {canCreate && (
+                <Button
+                  onClick={() => {
+                    setEditingPeriod(null)
+                    setIsPeriodModalOpen(true)
+                  }}
+                  className="bg-gpms-dark text-white hover:bg-gpms-light"
+                >
+                  <Plus className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                  فترة زمنية جديدة
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <Divider />
+        <CardContent>
+          {periodsLoading ? (
+            <div className="text-center py-12">جاري التحميل...</div>
+          ) : (
+            <div className="space-y-4">
+              {periods.map((period) => (
+                <Card key={period.id} className="hover-lift">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 bg-gpms-light/10 rounded-lg flex items-center justify-center">
+                            <Clock className="w-5 h-5 text-gpms-dark" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{period.name}</h3>
+                            <p className="text-sm text-gray-600">{periodTypeLabels[period.type] || period.type}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          <div className="flex items-center">
+                            <Calendar size={14} className="ml-1 rtl:ml-0 rtl:mr-1" />
+                            من {new Date(period.startDate).toLocaleDateString('ar-SA')}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar size={14} className="ml-1 rtl:ml-0 rtl:mr-1" />
+                            إلى {new Date(period.endDate).toLocaleDateString('ar-SA')}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            period.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {period.isActive ? 'نشط' : 'غير نشط'}
+                          </span>
+                          {new Date() >= new Date(period.startDate) && new Date() <= new Date(period.endDate) && period.isActive && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                              مفتوح حالياً
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {canEdit && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingPeriod(period)
+                              setIsPeriodModalOpen(true)
+                            }}
+                            className="text-blue-600 hover:text-blue-700 transition-colors"
+                            title="تعديل"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('هل أنت متأكد من حذف هذه الفترة؟')) {
+                                handleDeletePeriod(period.id)
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700 transition-colors"
+                            title="حذف"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {periods.length === 0 && (
+                <div className="text-center py-12">
+                  <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد فترات زمنية</h3>
+                  <p className="text-gray-600">ابدأ بإنشاء فترة زمنية جديدة</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Period Announcement Form Modal */}
+      <PeriodAnnouncementForm
+        isOpen={isPeriodModalOpen}
+        onClose={() => {
+          setIsPeriodModalOpen(false)
+          setEditingPeriod(null)
+        }}
+        onSubmit={handlePeriodSubmit}
+        period={editingPeriod || undefined}
+      />
+
+      {/* Original Announcements Section - Keeping for backward compatibility */}
       <Card className="hover-lift">
         <CardHeader>
           <div className="flex items-center justify-between">

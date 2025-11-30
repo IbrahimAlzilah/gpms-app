@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
+import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/utils'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
@@ -7,6 +8,8 @@ import Input from '../ui/Input'
 import { Form, FormGroup, FormLabel, FormError } from '../ui/Form'
 import Badge from '../ui/Badge'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import { inviteMemberToGroup, removeMemberFromGroup, searchAvailableStudents } from '../../services/groups.service'
+import { useNotifications } from '../../context/NotificationContext'
 import {
   Users,
   UserPlus,
@@ -17,7 +20,8 @@ import {
   AlertCircle,
   CheckCircle,
   Crown,
-  User
+  User,
+  Search
 } from 'lucide-react'
 
 interface GroupMember {
@@ -34,22 +38,24 @@ interface GroupManagementModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: any) => void
-  groupData?: {
+  currentGroup?: {
     id: string
     name: string
-    project: string
-    members: GroupMember[]
-    maxMembers: number
+    members: string[]
   }
+  mode?: 'create' | 'edit' | 'invite' | 'leave'
 }
 
 const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  groupData
+  currentGroup,
+  mode = 'edit'
 }) => {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const { addNotification } = useNotifications()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [inviteEmail, setInviteEmail] = useState('')
@@ -57,42 +63,62 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
   const [memberIdToRemove, setMemberIdToRemove] = useState<string | null>(null)
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string; studentId: string }>>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  const MAX_MEMBERS = 4
 
   const [formData, setFormData] = useState({
-    name: groupData?.name || '',
-    project: groupData?.project || '',
-    maxMembers: groupData?.maxMembers || 4
+    name: currentGroup?.name || '',
+    project: '',
+    maxMembers: MAX_MEMBERS
   })
 
   const [members, setMembers] = useState<GroupMember[]>(
-    groupData?.members || [
+    currentGroup ? currentGroup.members.map((name, index) => ({
+      id: `${index + 1}`,
+      name: name,
+      email: `${name.toLowerCase().replace(/\s+/g, '.')}@university.edu`,
+      studentId: `202100${1234 + index}`,
+      role: index === 0 ? 'leader' : 'member',
+      status: 'active' as const,
+      joinDate: new Date().toISOString().split('T')[0]
+    })) : [
       {
-        id: '1',
-        name: 'أحمد محمد علي',
-        email: 'ahmed.mohamed@university.edu',
-        studentId: '2021001234',
+        id: user?.id || '1',
+        name: user?.fullName || 'أحمد محمد علي',
+        email: user?.email || 'ahmed.mohamed@university.edu',
+        studentId: user?.studentId || '2021001234',
         role: 'leader',
         status: 'active',
-        joinDate: '2024-01-01'
-      },
-      {
-        id: '2',
-        name: 'فاطمة حسن محمد',
-        email: 'fatima.hassan@university.edu',
-        studentId: '2021001235',
-        role: 'member',
-        status: 'active',
-        joinDate: '2024-01-02'
+        joinDate: new Date().toISOString().split('T')[0]
       }
     ]
   )
 
-  const availableStudents = [
-    { id: '3', name: 'محمد خالد أحمد', email: 'mohamed.khalid@university.edu', studentId: '2021001236' },
-    { id: '4', name: 'سارة أحمد محمود', email: 'sara.ahmed@university.edu', studentId: '2021001237' },
-    { id: '5', name: 'علي حسن محمد', email: 'ali.hassan@university.edu', studentId: '2021001238' },
-    { id: '6', name: 'نورا سعد أحمد', email: 'nora.saad@university.edu', studentId: '2021001239' }
-  ]
+  useEffect(() => {
+    if (currentGroup) {
+      setFormData(prev => ({ ...prev, name: currentGroup.name, project: currentGroup.project || '' }))
+    }
+  }, [currentGroup])
+
+  const handleSearchStudents = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const results = await searchAvailableStudents(query)
+      setSearchResults(results)
+    } catch (error) {
+      console.error('Error searching students:', error)
+    } finally {
+      setIsSearching(false)
+    }
+  }
 
   const handleInviteMember = async () => {
     if (!inviteEmail.trim()) {
@@ -100,9 +126,8 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
       return
     }
 
-    const student = availableStudents.find(s => s.email === inviteEmail)
-    if (!student) {
-      setErrors({ invite: 'الطالب غير موجود في النظام' })
+    if (!currentGroup?.id) {
+      setErrors({ invite: 'يجب إنشاء المجموعة أولاً' })
       return
     }
 
@@ -116,20 +141,37 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
       return
     }
 
-    const newMember: GroupMember = {
-      id: student.id,
-      name: student.name,
-      email: student.email,
-      studentId: student.studentId,
-      role: 'member',
-      status: 'invited',
-      joinDate: new Date().toISOString().split('T')[0]
-    }
+    try {
+      await inviteMemberToGroup(currentGroup.id, inviteEmail, inviteMessage)
+      
+      const student = searchResults.find(s => s.email === inviteEmail)
+      if (student) {
+        const newMember: GroupMember = {
+          id: student.id,
+          name: student.name,
+          email: student.email,
+          studentId: student.studentId,
+          role: 'member',
+          status: 'invited',
+          joinDate: new Date().toISOString().split('T')[0]
+        }
+        setMembers(prev => [...prev, newMember])
+      }
 
-    setMembers(prev => [...prev, newMember])
-    setInviteEmail('')
-    setInviteMessage('')
-    setErrors({})
+      addNotification({
+        title: 'تم إرسال الدعوة',
+        message: `تم إرسال دعوة للانضمام للمجموعة إلى ${inviteEmail}`,
+        type: 'success'
+      })
+
+      setInviteEmail('')
+      setInviteMessage('')
+      setSearchQuery('')
+      setSearchResults([])
+      setErrors({})
+    } catch (error) {
+      setErrors({ invite: error instanceof Error ? error.message : 'حدث خطأ أثناء إرسال الدعوة' })
+    }
   }
 
   const handleRemoveMember = (memberId: string) => {
@@ -137,12 +179,31 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
     setConfirmRemoveOpen(true)
   }
 
-  const confirmRemoveMember = () => {
-    if (memberIdToRemove) {
-      setMembers(prev => prev.filter(m => m.id !== memberIdToRemove))
+  const confirmRemoveMember = async () => {
+    if (!memberIdToRemove || !currentGroup?.id) {
+      setConfirmRemoveOpen(false)
+      setMemberIdToRemove(null)
+      return
     }
-    setConfirmRemoveOpen(false)
-    setMemberIdToRemove(null)
+
+    try {
+      await removeMemberFromGroup(currentGroup.id, memberIdToRemove)
+      setMembers(prev => prev.filter(m => m.id !== memberIdToRemove))
+      addNotification({
+        title: 'تم إزالة العضو',
+        message: 'تم إزالة العضو من المجموعة بنجاح',
+        type: 'success'
+      })
+    } catch (error) {
+      addNotification({
+        title: 'خطأ',
+        message: error instanceof Error ? error.message : 'حدث خطأ أثناء إزالة العضو',
+        type: 'error'
+      })
+    } finally {
+      setConfirmRemoveOpen(false)
+      setMemberIdToRemove(null)
+    }
   }
 
   const cancelRemoveMember = () => {
@@ -175,16 +236,16 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
       newErrors.name = 'اسم المجموعة مطلوب'
     }
 
-    if (!formData.project.trim()) {
+    if (mode === 'create' && !formData.project.trim()) {
       newErrors.project = 'اسم المشروع مطلوب'
     }
 
-    if (formData.actionType === 'leave' && currentGroup && currentGroup.members.length <= 1) {
+    if (mode === 'leave' && members.length <= 1) {
       newErrors.members = 'لا يمكن مغادرة المجموعة - يجب أن يبقى عضو واحد على الأقل'
     }
 
-    if (formData.actionType === 'create' && members.length < 2) {
-      newErrors.members = 'يجب أن تحتوي المجموعة على عضوين على الأقل'
+    if (mode === 'create' && members.length < 1) {
+      newErrors.members = 'يجب أن تحتوي المجموعة على عضو واحد على الأقل'
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -265,16 +326,18 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
                   />
                 </FormGroup>
 
-                <FormGroup>
-                  <FormLabel htmlFor="project" required>اسم المشروع</FormLabel>
-                  <Input
-                    id="project"
-                    value={formData.project}
-                    onChange={(e) => setFormData(prev => ({ ...prev, project: e.target.value }))}
-                    placeholder="أدخل اسم المشروع..."
-                    error={errors.project}
-                  />
-                </FormGroup>
+                {mode === 'create' && (
+                  <FormGroup>
+                    <FormLabel htmlFor="project" required>اسم المشروع</FormLabel>
+                    <Input
+                      id="project"
+                      value={formData.project}
+                      onChange={(e) => setFormData(prev => ({ ...prev, project: e.target.value }))}
+                      placeholder="أدخل اسم المشروع..."
+                      error={errors.project}
+                    />
+                  </FormGroup>
+                )}
               </div>
 
               {/* Group Members */}
@@ -317,7 +380,7 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
                         {member.role === 'leader' && (
                           <Badge variant="warning">قائد المجموعة</Badge>
                         )}
-                        {member.id !== '1' && ( // Don't allow removing the current user
+                        {member.role !== 'leader' && ( // Don't allow removing the leader
                           <button
                             type="button"
                             onClick={() => handleRemoveMember(member.id)}
@@ -339,6 +402,43 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
               {members.length < formData.maxMembers && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">دعوة عضو جديد</h3>
+
+                  <FormGroup>
+                    <FormLabel htmlFor="searchStudent">البحث عن طالب</FormLabel>
+                    <div className="relative">
+                      <Input
+                        id="searchStudent"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value)
+                          handleSearchStudents(e.target.value)
+                        }}
+                        placeholder="ابحث بالاسم، البريد الإلكتروني، أو الرقم الجامعي..."
+                        error={errors.invite}
+                      />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 rtl:left-auto rtl:right-3" />
+                    </div>
+                    {searchResults.length > 0 && (
+                      <div className="mt-2 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                        {searchResults.map((student) => (
+                          <div
+                            key={student.id}
+                            onClick={() => {
+                              setInviteEmail(student.email)
+                              setSearchQuery(student.name)
+                              setSearchResults([])
+                            }}
+                            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          >
+                            <p className="font-medium text-gray-900">{student.name}</p>
+                            <p className="text-sm text-gray-600">{student.email}</p>
+                            <p className="text-xs text-gray-500">الرقم الجامعي: {student.studentId}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </FormGroup>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormGroup>
@@ -369,6 +469,7 @@ const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
                     variant="outline"
                     onClick={handleInviteMember}
                     className="flex items-center"
+                    disabled={!inviteEmail.trim()}
                   >
                     <UserPlus className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                     دعوة عضو

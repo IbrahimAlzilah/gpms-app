@@ -83,3 +83,61 @@ export async function deleteCommittee(id: string): Promise<void> {
     mockData: undefined,
   });
 }
+
+export interface ProjectReadyForDefense {
+  id: string;
+  title: string;
+  studentName: string;
+  studentId: string;
+  supervisor: string;
+  status: string;
+  progress: number;
+  hasCommittee: boolean;
+}
+
+export async function getProjectsReadyForDefense(): Promise<ProjectReadyForDefense[]> {
+  const res = await apiRequest<ProjectReadyForDefense[]>(
+    "/projects/ready-for-defense",
+    "GET",
+    undefined,
+    {
+      mockData: [
+        {
+          id: 'p1',
+          title: 'تطبيق إدارة المكتبة الذكية',
+          studentName: 'أحمد محمد علي',
+          studentId: '2021001234',
+          supervisor: 'د. أحمد محمد',
+          status: 'ready_for_defense',
+          progress: 100,
+          hasCommittee: false
+        },
+        {
+          id: 'p2',
+          title: 'نظام إدارة المستودعات',
+          studentName: 'فاطمة حسن',
+          studentId: '2021001235',
+          supervisor: 'د. سارة أحمد',
+          status: 'ready_for_defense',
+          progress: 100,
+          hasCommittee: true
+        }
+      ] as ProjectReadyForDefense[],
+    }
+  );
+  return res.data;
+}
+
+export async function assignCommitteeToProject(
+  projectId: string,
+  committeeId: string
+): Promise<void> {
+  await apiRequest<void>(
+    `/projects/${projectId}/assign-committee`,
+    "POST",
+    { committeeId },
+    {
+      mockData: undefined,
+    }
+  );
+}

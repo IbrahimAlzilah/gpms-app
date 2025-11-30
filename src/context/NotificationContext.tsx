@@ -13,6 +13,10 @@ export interface Notification {
   }
   avatar?: string
   link?: string
+  category?: 'system' | 'project' | 'request' | 'evaluation' | 'document' | 'meeting'
+  priority?: 'low' | 'medium' | 'high'
+  relatedId?: string // ID of related entity (project, request, etc.)
+  role?: string[] // Roles that should see this notification
 }
 
 interface NotificationContextType {
@@ -23,6 +27,9 @@ interface NotificationContextType {
   markAllAsRead: () => void
   removeNotification: (id: string) => void
   clearAllNotifications: () => void
+  getNotificationsByCategory: (category: Notification['category']) => Notification[]
+  getNotificationsByRole: (role: string) => Notification[]
+  getUnreadByCategory: (category: Notification['category']) => number
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
@@ -92,6 +99,33 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         type: 'info',
         read: true,
         timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+      },
+      {
+        id: '6',
+        title: 'طلب إشراف جديد',
+        message: 'لديك طلب إشراف جديد من طالب على مشروع "نظام إدارة المستشفى"',
+        type: 'info',
+        read: false,
+        timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+        link: '/requests'
+      },
+      {
+        id: '7',
+        title: 'تم تعيينك كمشرف',
+        message: 'تم تعيينك كمشرف على مشروع "منصة التعليم الإلكتروني"',
+        type: 'success',
+        read: false,
+        timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+        link: '/projects'
+      },
+      {
+        id: '8',
+        title: 'تم قبول طلب التسجيل',
+        message: 'تم قبول طلبك للتسجيل في مشروع "نظام إدارة المستشفى"',
+        type: 'success',
+        read: false,
+        timestamp: new Date(Date.now() - 1000 * 60 * 45), // 45 minutes ago
+        link: '/projects'
       }
     ]
     
@@ -135,6 +169,23 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     setNotifications([])
   }
 
+  const getNotificationsByCategory = (category: Notification['category']): Notification[] => {
+    if (!category) return notifications
+    return notifications.filter((notification) => notification.category === category)
+  }
+
+  const getNotificationsByRole = (role: string): Notification[] => {
+    return notifications.filter(
+      (notification) =>
+        !notification.role || notification.role.length === 0 || notification.role.includes(role)
+    )
+  }
+
+  const getUnreadByCategory = (category: Notification['category']): number => {
+    const categoryNotifications = getNotificationsByCategory(category)
+    return categoryNotifications.filter((notification) => !notification.read).length
+  }
+
   const value: NotificationContextType = {
     notifications,
     unreadCount,
@@ -142,7 +193,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     markAsRead,
     markAllAsRead,
     removeNotification,
-    clearAllNotifications
+    clearAllNotifications,
+    getNotificationsByCategory,
+    getNotificationsByRole,
+    getUnreadByCategory,
   }
 
   return (

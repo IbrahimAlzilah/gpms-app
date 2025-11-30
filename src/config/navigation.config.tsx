@@ -70,6 +70,7 @@ export const roleNavigation: Record<RoleKey, NavigationConfigItem[]> = {
   supervisor: [
     { name: 'قائمة المشاريع', href: '/projects', icon: FolderOpen },
     { nameKey: 'navigation.proposals', href: '/proposals', icon: FileText },
+    { name: 'طلبات الإشراف', href: '/supervisor-requests', icon: UserCheck },
     { nameKey: 'navigation.requests', href: '/requests', icon: Send },
     { nameKey: 'navigation.documents', href: '/documents', icon: FileCheck },
     { nameKey: 'navigation.grades', href: '/evaluations', icon: Award }
@@ -77,9 +78,11 @@ export const roleNavigation: Record<RoleKey, NavigationConfigItem[]> = {
   committee: [
     { nameKey: 'navigation.proposals', href: '/proposals', icon: FileText },
     { nameKey: 'navigation.projects', href: '/projects', icon: FolderOpen },
+    { nameKey: 'navigation.requests', href: '/requests', icon: Send },
     { nameKey: 'navigation.schedules', href: '/schedules', icon: Calendar },
     { name: 'إعلان الفترات', href: '/announcements', icon: Megaphone },
     { name: 'توزيع اللجان', href: '/distribution', icon: UserCheck },
+    { nameKey: 'navigation.evaluations', href: '/evaluations', icon: Award },
     { name: 'إصدار التقارير', href: '/reports', icon: FileBarChart }
   ],
   discussion: [

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { cn, getActiveFiltersCount } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
@@ -11,15 +11,17 @@ import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { ViewModeToggle } from '@/components/shared'
 import { StatusBadge } from '@/components/shared'
-import { Plus, Eye, Edit, Trash2, Users, Calendar, Clock, MapPin, SlidersHorizontal } from 'lucide-react'
+import { Plus, Eye, Edit, Trash2, Users, Calendar, Clock, MapPin, SlidersHorizontal, CheckCircle } from 'lucide-react'
 import { DiscussionCommittee } from './schema'
 import { useNavigate } from 'react-router-dom'
-import { deleteCommittee } from '@/services/distribution.service'
+import { deleteCommittee, getProjectsReadyForDefense, assignCommitteeToProject, ProjectReadyForDefense } from '@/services/distribution.service'
 import { useDistribution } from './distribution.hook'
 import { useNotifications } from '@/context/NotificationContext'
+import { useAuth } from '@/context/AuthContext'
 
 const DistributionScreen: React.FC = () => {
   const { t } = useLanguage()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const { addNotification } = useNotifications()
   const { committees, isLoading: committeesLoading, refetch } = useDistribution()
@@ -32,12 +34,21 @@ const DistributionScreen: React.FC = () => {
   const [editingCommittee, setEditingCommittee] = useState<DiscussionCommittee | null>(null)
   const [viewCommittee, setViewCommittee] = useState<DiscussionCommittee | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [projectsReadyForDefense, setProjectsReadyForDefense] = useState<ProjectReadyForDefense[]>([])
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<ProjectReadyForDefense | null>(null)
+  const [selectedCommitteeId, setSelectedCommitteeId] = useState('')
 
   const statusOptions = [
     { value: 'all', label: 'جميع الحالات' },
     { value: 'assigned', label: 'معين' },
     { value: 'pending', label: 'قيد الانتظار' },
     { value: 'completed', label: 'مكتمل' }
+  ]
+
+  const priorityOptions = [
+    { value: 'all', label: 'جميع الأولويات' }
   ]
 
   const sortOptions = [
@@ -59,10 +70,61 @@ const DistributionScreen: React.FC = () => {
     })
   }, [committees, searchQuery, statusFilter])
 
+  useEffect(() => {
+    const loadProjectsReadyForDefense = async () => {
+      if (user?.role !== 'committee') return
+      
+      setIsLoadingProjects(true)
+      try {
+        const projects = await getProjectsReadyForDefense()
+        setProjectsReadyForDefense(projects.filter(p => !p.hasCommittee))
+      } catch (error) {
+        console.error('Error loading projects:', error)
+      } finally {
+        setIsLoadingProjects(false)
+      }
+    }
+
+    loadProjectsReadyForDefense()
+  }, [user, committees])
+
   const handleFilterClear = () => {
     setStatusFilter('all')
     setSortBy('scheduledDate')
     setSortOrder('asc')
+  }
+
+  const handleAssignCommittee = async () => {
+    if (!selectedProject || !selectedCommitteeId) {
+      addNotification({
+        title: 'خطأ',
+        message: 'يرجى اختيار المشروع واللجنة',
+        type: 'error'
+      })
+      return
+    }
+
+    try {
+      await assignCommitteeToProject(selectedProject.id, selectedCommitteeId)
+      addNotification({
+        title: 'تم التعيين',
+        message: `تم تعيين اللجنة للمشروع "${selectedProject.title}" بنجاح`,
+        type: 'success'
+      })
+      setAssignModalOpen(false)
+      setSelectedProject(null)
+      setSelectedCommitteeId('')
+      refetch()
+      // Reload projects
+      const projects = await getProjectsReadyForDefense()
+      setProjectsReadyForDefense(projects.filter(p => !p.hasCommittee))
+    } catch (error) {
+      addNotification({
+        title: 'خطأ',
+        message: error instanceof Error ? error.message : 'حدث خطأ أثناء تعيين اللجنة',
+        type: 'error'
+      })
+    }
   }
 
   const columns = useMemo(() => [
@@ -149,6 +211,44 @@ const DistributionScreen: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Projects Ready for Defense */}
+      {user?.role === 'committee' && projectsReadyForDefense.length > 0 && (
+        <Card className="hover-lift border-blue-200">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">المشاريع الجاهزة للمناقشة</h2>
+                <p className="text-sm text-gray-600 mt-1">مشاريع تحتاج إلى تعيين لجنة مناقشة</p>
+              </div>
+            </div>
+          </CardHeader>
+          <Divider />
+          <CardContent>
+            <div className="space-y-3">
+              {projectsReadyForDefense.map((project) => (
+                <div key={project.id} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{project.title}</h3>
+                    <p className="text-sm text-gray-600">الطالب: {project.studentName} | المشرف: {project.supervisor}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedProject(project)
+                      setAssignModalOpen(true)
+                    }}
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    <CheckCircle className="w-4 h-4 ml-1 rtl:ml-0 rtl:mr-1" />
+                    تعيين لجنة
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="hover-lift">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -161,7 +261,7 @@ const DistributionScreen: React.FC = () => {
                 content={
                   <AdvancedFilter
                     statusOptions={statusOptions}
-                    priorityOptions={[]}
+                    priorityOptions={priorityOptions}
                     sortOptions={sortOptions}
                     statusFilter={statusFilter}
                     priorityFilter="all"
@@ -326,6 +426,64 @@ const DistributionScreen: React.FC = () => {
         }}
         onCancel={() => setConfirmDeleteId(null)}
       />
+
+      {/* Assign Committee Modal */}
+      <Modal
+        isOpen={assignModalOpen}
+        onClose={() => {
+          setAssignModalOpen(false)
+          setSelectedProject(null)
+          setSelectedCommitteeId('')
+        }}
+        title="تعيين لجنة للمشروع"
+        size="md"
+      >
+        {selectedProject && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="font-medium text-gray-900">المشروع: {selectedProject.title}</p>
+              <p className="text-sm text-gray-600">الطالب: {selectedProject.studentName}</p>
+              <p className="text-sm text-gray-600">المشرف: {selectedProject.supervisor}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                اختر اللجنة
+              </label>
+              <select
+                value={selectedCommitteeId}
+                onChange={(e) => setSelectedCommitteeId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gpms-light focus:border-transparent"
+              >
+                <option value="">-- اختر اللجنة --</option>
+                {committees.map((committee) => (
+                  <option key={committee.id} value={committee.id}>
+                    {committee.name} ({committee.members.length} عضو)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAssignModalOpen(false)
+                  setSelectedProject(null)
+                  setSelectedCommitteeId('')
+                }}
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleAssignCommittee}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                disabled={!selectedCommitteeId}
+              >
+                تعيين
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

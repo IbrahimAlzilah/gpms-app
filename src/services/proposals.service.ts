@@ -77,5 +77,21 @@ export async function rejectProposal(id: string, comments?: string): Promise<Pro
   })
 }
 
+export async function requestProposalModification(id: string, modificationNotes: string): Promise<Proposal> {
+  const res = await apiRequest<Proposal>(`/proposals/${id}/request-modification`, 'POST', { modificationNotes }, {
+    mockData: {
+      id,
+      title: 'Sample Proposal',
+      description: 'Sample description',
+      status: 'needs_modification',
+      priority: 'medium',
+      submittedDate: new Date().toISOString(),
+      comments: modificationNotes,
+      reviewedDate: new Date().toISOString(),
+    } as Proposal,
+  })
+  return res.data
+}
+
 
 

@@ -22,13 +22,19 @@ export const permissions: Permission[] = [
     roles: ["student", "supervisor", "committee", "discussion"],
   },
   { resource: "projects", action: "create", roles: ["student"] },
-  { resource: "projects", action: "edit", roles: ["student", "supervisor"] },
+  { resource: "projects", action: "edit", roles: ["student", "supervisor", "committee"] },
   { resource: "projects", action: "delete", roles: ["student"] },
   {
     resource: "projects",
     action: "evaluate",
     roles: ["supervisor", "discussion"],
   },
+  { resource: "projects", action: "register", roles: ["student"] },
+  { resource: "projects", action: "browse", roles: ["student"] },
+  { resource: "projects", action: "assign_supervisor", roles: ["committee"] },
+  { resource: "projects", action: "approve", roles: ["committee"] },
+  { resource: "projects", action: "reject", roles: ["committee"] },
+  { resource: "projects", action: "manage_grades", roles: ["committee"] },
 
   // Proposals
   {
@@ -36,11 +42,13 @@ export const permissions: Permission[] = [
     action: "view",
     roles: ["student", "supervisor", "committee"],
   },
-  { resource: "proposals", action: "create", roles: ["student"] },
+  { resource: "proposals", action: "create", roles: ["student", "supervisor"] },
   { resource: "proposals", action: "edit", roles: ["student"] },
   { resource: "proposals", action: "delete", roles: ["student"] },
   { resource: "proposals", action: "review", roles: ["committee"] },
   { resource: "proposals", action: "approve", roles: ["committee"] },
+  { resource: "proposals", action: "reject", roles: ["committee"] },
+  { resource: "proposals", action: "announce", roles: ["committee"] },
 
   // Documents
   {
@@ -70,10 +78,11 @@ export const permissions: Permission[] = [
   },
 
   // Requests
-  { resource: "requests", action: "view", roles: ["student", "supervisor"] },
+  { resource: "requests", action: "view", roles: ["student", "supervisor", "committee"] },
   { resource: "requests", action: "create", roles: ["student"] },
-  { resource: "requests", action: "approve", roles: ["supervisor"] },
-  { resource: "requests", action: "reject", roles: ["supervisor"] },
+  { resource: "requests", action: "approve", roles: ["supervisor", "committee"] },
+  { resource: "requests", action: "reject", roles: ["supervisor", "committee"] },
+  { resource: "requests", action: "handle", roles: ["supervisor", "committee"] },
 
   // Schedules
   { resource: "schedules", action: "view", roles: ["supervisor", "committee"] },
@@ -93,6 +102,9 @@ export const permissions: Permission[] = [
   // Groups
   { resource: "groups", action: "view", roles: ["student", "supervisor"] },
   { resource: "groups", action: "manage", roles: ["student"] },
+  { resource: "groups", action: "create", roles: ["student"] },
+  { resource: "groups", action: "invite", roles: ["student"] },
+  { resource: "groups", action: "leave", roles: ["student"] },
 
   // Announcements
   {
@@ -106,6 +118,23 @@ export const permissions: Permission[] = [
   // Distribution
   { resource: "distribution", action: "view", roles: ["committee"] },
   { resource: "distribution", action: "manage", roles: ["committee"] },
+  { resource: "distribution", action: "assign", roles: ["committee"] },
+
+  // Project Registration
+  { resource: "project_registration", action: "view", roles: ["student"] },
+  { resource: "project_registration", action: "register", roles: ["student"] },
+  { resource: "project_registration", action: "cancel", roles: ["student"] },
+
+  // Supervisor Assignment
+  { resource: "supervisor_assignment", action: "view", roles: ["committee"] },
+  { resource: "supervisor_assignment", action: "assign", roles: ["committee"] },
+  { resource: "supervisor_assignment", action: "remove", roles: ["committee"] },
+
+  // Grades Management
+  { resource: "grades", action: "view", roles: ["student", "supervisor", "committee", "discussion"] },
+  { resource: "grades", action: "manage", roles: ["committee"] },
+  { resource: "grades", action: "calculate", roles: ["committee"] },
+  { resource: "grades", action: "export", roles: ["student", "supervisor", "committee"] },
 ];
 
 /**

@@ -1,11 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
+import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import { cn } from '../../lib/utils'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { Form, FormGroup, FormLabel, FormError } from '../ui/Form'
 import Badge from '../ui/Badge'
+import { checkPeriodStatus } from '../../services/periods.service'
 import { 
   Star, 
   CheckCircle,
@@ -52,8 +55,12 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
   projectData
 }) => {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const { addNotification } = useNotifications()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [periodCheck, setPeriodCheck] = useState<{ isOpen: boolean; message?: string }>({ isOpen: true })
+  const [isCheckingPeriod, setIsCheckingPeriod] = useState(false)
   
   const [evaluationData, setEvaluationData] = useState({
     overallScore: 0,
@@ -186,15 +193,62 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
     return 'text-red-600'
   }
 
+  useEffect(() => {
+    const checkDefensePeriod = async () => {
+      if (!isOpen || !user || user.role !== 'discussion') {
+        setPeriodCheck({ isOpen: true })
+        return
+      }
+
+      setIsCheckingPeriod(true)
+      try {
+        const status = await checkPeriodStatus('defense')
+        setPeriodCheck({
+          isOpen: status.isOpen,
+          message: status.isOpen ? undefined : 
+            status.period ? 
+              `فترة التقييم النهائي مغلقة. الفترة: ${new Date(status.period.startDate).toLocaleDateString('ar-SA')} - ${new Date(status.period.endDate).toLocaleDateString('ar-SA')}` :
+              'لا توجد فترة زمنية محددة للتقييم النهائي'
+        })
+      } catch (error) {
+        console.error('Error checking period:', error)
+        setPeriodCheck({ isOpen: true }) // Allow evaluation if check fails
+      } finally {
+        setIsCheckingPeriod(false)
+      }
+    }
+
+    checkDefensePeriod()
+  }, [isOpen, user])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setErrors({})
 
+    // Check period status for discussion committee
+    if (user?.role === 'discussion' && !periodCheck.isOpen) {
+      setErrors({ general: periodCheck.message || 'فترة التقييم النهائي مغلقة حالياً' })
+      setIsLoading(false)
+      addNotification({
+        title: 'فترة التقييم مغلقة',
+        message: periodCheck.message || 'فترة التقييم النهائي مغلقة حالياً',
+        type: 'error'
+      })
+      return
+    }
+
+    if (!projectData) {
+      setErrors({ general: 'معلومات المشروع غير متوفرة' })
+      setIsLoading(false)
+      return
+    }
+
     // Validation
     const newErrors: Record<string, string> = {}
     
-    if (evaluationData.overallScore === 0) {
+    const totalScore = criteria.reduce((sum, c) => sum + c.score, 0)
+    if (totalScore === 0) {
       newErrors.overall = 'يجب إدخال درجات التقييم'
     }
     
@@ -209,19 +263,38 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
     }
 
     try {
-      // Simulate API call
+      // Simulate API call - send to committee for approval
       await new Promise(resolve => setTimeout(resolve, 1500))
       
-      onSubmit({
+      const finalEvaluation = {
         ...evaluationData,
         criteria,
         evaluationDate: new Date().toISOString().split('T')[0],
-        evaluator: 'لجنة المناقشة'
+        evaluator: user?.fullName || 'لجنة المناقشة',
+        projectId: projectData.id,
+        studentId: projectData.studentId,
+        totalScore,
+        status: 'pending_approval', // Sent to committee for approval
+        submittedToCommittee: true
+      }
+      
+      onSubmit(finalEvaluation)
+      
+      addNotification({
+        title: 'تم إرسال التقييم',
+        message: 'تم إرسال التقييم النهائي للجنة المشاريع للاعتماد. سيتم تحديث حالة المشروع إلى "مكتمل" بعد الاعتماد.',
+        type: 'success'
       })
+      
       onClose()
       
     } catch (error) {
       setErrors({ general: 'حدث خطأ أثناء حفظ التقييم' })
+      addNotification({
+        title: 'خطأ',
+        message: 'حدث خطأ أثناء حفظ التقييم',
+        type: 'error'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -279,6 +352,28 @@ const FinalEvaluationModal: React.FC<FinalEvaluationModalProps> = ({
       <div className="max-h-[80vh] overflow-y-auto">
         <Form onSubmit={handleSubmit}>
           <div className="space-y-6">
+            {/* Period Check Warning */}
+            {user?.role === 'discussion' && (
+              <>
+                {isCheckingPeriod && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                    <p>جاري التحقق من فترة التقييم...</p>
+                  </div>
+                )}
+                {!isCheckingPeriod && !periodCheck.isOpen && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    <p className="font-medium mb-1">⚠️ فترة التقييم النهائي مغلقة</p>
+                    <p>{periodCheck.message || 'فترة التقييم النهائي مغلقة حالياً'}</p>
+                  </div>
+                )}
+                {!isCheckingPeriod && periodCheck.isOpen && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    <p className="font-medium">✓ فترة التقييم النهائي مفتوحة</p>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* Project Information */}
             {projectData && (
               <div className="bg-gray-50 rounded-lg p-4">

@@ -14,6 +14,9 @@ const Projects = lazy(() => import('@/pages/projects'))
 const ProjectAdd = lazy(() => import('@/pages/projects/new'))
 const ProjectEdit = lazy(() => import('@/pages/projects/edit'))
 const Proposals = lazy(() => import('@/pages/proposals'))
+const MyProposals = lazy(() => import('@/pages/proposals/my-proposals'))
+const GroupProposals = lazy(() => import('@/pages/proposals/group-proposals'))
+const ApprovedProposals = lazy(() => import('@/pages/proposals/approved-proposals'))
 const ProposalAdd = lazy(() => import('@/pages/proposals/new'))
 const ProposalEdit = lazy(() => import('@/pages/proposals/edit'))
 const Documents = lazy(() => import('@/pages/documents'))
@@ -39,6 +42,7 @@ const AnnouncementEdit = lazy(() => import('@/pages/announcements/edit'))
 const Distribution = lazy(() => import('@/pages/distribution'))
 const DistributionAdd = lazy(() => import('@/pages/distribution/new'))
 const DistributionEdit = lazy(() => import('@/pages/distribution/edit'))
+const SupervisorRequests = lazy(() => import('@/pages/supervisor-requests'))
 
 // Demo Route
 const ComponentsDemo = lazy(() => import('@/pages/ComponentsDemo'))
@@ -130,7 +134,7 @@ const AppRoutes: React.FC = () => {
             path="/proposals/my"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <Proposals />
+                <MyProposals />
               </ProtectedRoute>
             }
           />
@@ -138,7 +142,7 @@ const AppRoutes: React.FC = () => {
             path="/proposals/group"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <Proposals />
+                <GroupProposals />
               </ProtectedRoute>
             }
           />
@@ -146,7 +150,7 @@ const AppRoutes: React.FC = () => {
             path="/proposals/approved"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <Proposals />
+                <ApprovedProposals />
               </ProtectedRoute>
             }
           />
@@ -211,11 +215,11 @@ const AppRoutes: React.FC = () => {
             }
           />
 
-          {/* Requests - Student, Supervisor */}
+          {/* Requests - Student, Supervisor, Committee */}
           <Route
             path="/requests"
             element={
-              <ProtectedRoute allowedRoles={['student', 'supervisor']}>
+              <ProtectedRoute allowedRoles={['student', 'supervisor', 'committee']}>
                 <Requests />
               </ProtectedRoute>
             }
@@ -313,6 +317,16 @@ const AppRoutes: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['student', 'supervisor']}>
                 <Groups />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Supervisor Requests - Supervisor */}
+          <Route
+            path="/supervisor-requests"
+            element={
+              <ProtectedRoute allowedRoles={['supervisor']}>
+                <SupervisorRequests />
               </ProtectedRoute>
             }
           />

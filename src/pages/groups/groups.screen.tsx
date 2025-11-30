@@ -1,91 +1,129 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Divider from '@/components/ui/Divider'
 import GroupManagementModal from '@/components/forms/GroupManagementModal'
 import { Users, UserPlus, LogOut, PlusCircle, LogIn } from 'lucide-react'
-
-interface GroupMember {
-  id: string
-  name: string
-  email: string
-  role: 'leader' | 'member'
-  joinDate: string
-}
-
-interface Group {
-  id: string
-  name: string
-  project: string
-  members: GroupMember[]
-  createdAt: string
-  status: 'active' | 'pending' | 'inactive'
-}
+import { getStudentGroup, createGroup, joinGroup, leaveGroup, Group } from '@/services/groups.service'
+import { useNotifications } from '@/context/NotificationContext'
+import Modal from '@/components/ui/Modal'
+import Input from '@/components/ui/Input'
+import { Form, FormGroup, FormLabel } from '@/components/ui/Form'
 
 const GroupsScreen: React.FC = () => {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const { addNotification } = useNotifications()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false)
   const [modalType, setModalType] = useState<'create' | 'join' | 'invite' | 'leave'>('create')
+  const [currentGroup, setCurrentGroup] = useState<Group | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [joinGroupId, setJoinGroupId] = useState('')
 
-  const [currentGroup, setCurrentGroup] = useState<Group | null>({
-    id: '1',
-    name: 'مجموعة التطوير الذكي',
-    project: 'تطبيق إدارة المكتبة الذكية',
-    members: [
-      {
-        id: '1',
-        name: 'أحمد علي',
-        email: 'ahmed.ali@university.edu',
-        role: 'leader',
-        joinDate: '2024-01-01'
-      },
-      {
-        id: '2',
-        name: 'فاطمة حسن',
-        email: 'fatima.hassan@university.edu',
-        role: 'member',
-        joinDate: '2024-01-05'
-      },
-      {
-        id: '3',
-        name: 'محمد خالد',
-        email: 'mohammed.khalid@university.edu',
-        role: 'member',
-        joinDate: '2024-01-10'
-      }
-    ],
-    createdAt: '2024-01-01',
-    status: 'active'
-  })
+  useEffect(() => {
+    loadStudentGroup()
+  }, [user])
+
+  const loadStudentGroup = async () => {
+    if (!user?.id) return
+    
+    setIsLoading(true)
+    try {
+      const group = await getStudentGroup(user.id)
+      setCurrentGroup(group)
+    } catch (error) {
+      console.error('Error loading group:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleModalOpen = (type: 'create' | 'join' | 'invite' | 'leave') => {
     setModalType(type)
-    setIsModalOpen(true)
+    if (type === 'join') {
+      setIsJoinModalOpen(true)
+    } else {
+      setIsModalOpen(true)
+    }
   }
 
-  const handleGroupAction = (data: { groupName?: string; projectName?: string; [key: string]: unknown }) => {
-    switch (modalType) {
-      case 'create':
-        setCurrentGroup({
-          id: Date.now().toString(),
-          name: data.groupName,
-          project: data.projectName || '',
-          members: [{
-            id: '1',
-            name: 'أحمد علي',
-            email: 'ahmed.ali@university.edu',
-            role: 'leader',
-            joinDate: new Date().toISOString().split('T')[0]
-          }],
-          createdAt: new Date().toISOString().split('T')[0],
-          status: 'active'
-        })
-        break
-      default:
-        break
+  const handleGroupAction = async (data: { groupName?: string; projectName?: string; members?: any[]; [key: string]: unknown }) => {
+    if (!user?.id) return
+
+    try {
+      switch (modalType) {
+        case 'create':
+          const newGroup = await createGroup({
+            name: data.groupName || '',
+            project: data.projectName,
+            members: data.members || [],
+            status: 'active'
+          })
+          setCurrentGroup(newGroup)
+          addNotification({
+            title: 'تم إنشاء المجموعة',
+            message: `تم إنشاء المجموعة "${newGroup.name}" بنجاح`,
+            type: 'success'
+          })
+          break
+        case 'invite':
+          // Handled in GroupManagementModal
+          await loadStudentGroup()
+          break
+        case 'leave':
+          if (currentGroup) {
+            await leaveGroup(currentGroup.id, user.id)
+            setCurrentGroup(null)
+            addNotification({
+              title: 'تم مغادرة المجموعة',
+              message: 'تم مغادرة المجموعة بنجاح',
+              type: 'success'
+            })
+          }
+          break
+        default:
+          break
+      }
+      setIsModalOpen(false)
+    } catch (error) {
+      addNotification({
+        title: 'خطأ',
+        message: error instanceof Error ? error.message : 'حدث خطأ أثناء تنفيذ العملية',
+        type: 'error'
+      })
     }
-    setIsModalOpen(false)
+  }
+
+  const handleJoinGroup = async () => {
+    if (!joinGroupId.trim() || !user?.id) {
+      addNotification({
+        title: 'خطأ',
+        message: 'يرجى إدخال معرف المجموعة',
+        type: 'error'
+      })
+      return
+    }
+
+    try {
+      const group = await joinGroup(joinGroupId.trim(), user.id)
+      setCurrentGroup(group)
+      setIsJoinModalOpen(false)
+      setJoinGroupId('')
+      addNotification({
+        title: 'تم الانضمام للمجموعة',
+        message: `تم الانضمام للمجموعة "${group.name}" بنجاح`,
+        type: 'success'
+      })
+    } catch (error) {
+      addNotification({
+        title: 'خطأ',
+        message: error instanceof Error ? error.message : 'حدث خطأ أثناء الانضمام للمجموعة',
+        type: 'error'
+      })
+    }
   }
 
   return (
@@ -204,12 +242,54 @@ const GroupsScreen: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleGroupAction}
+        mode={modalType === 'create' ? 'create' : modalType === 'invite' ? 'invite' : 'edit'}
         currentGroup={currentGroup ? {
           id: currentGroup.id,
           name: currentGroup.name,
           members: currentGroup.members.map(m => m.name)
         } : undefined}
       />
+
+      {/* Join Group Modal */}
+      <Modal
+        isOpen={isJoinModalOpen}
+        onClose={() => {
+          setIsJoinModalOpen(false)
+          setJoinGroupId('')
+        }}
+        title="الانضمام لمجموعة"
+        size="sm"
+      >
+        <Form onSubmit={(e) => { e.preventDefault(); handleJoinGroup(); }}>
+          <FormGroup>
+            <FormLabel htmlFor="groupId" required>معرف المجموعة</FormLabel>
+            <Input
+              id="groupId"
+              value={joinGroupId}
+              onChange={(e) => setJoinGroupId(e.target.value)}
+              placeholder="أدخل معرف المجموعة..."
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              يمكنك الحصول على معرف المجموعة من قائد المجموعة
+            </p>
+          </FormGroup>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsJoinModalOpen(false)
+                setJoinGroupId('')
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button type="submit">
+              الانضمام
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   )
 }
